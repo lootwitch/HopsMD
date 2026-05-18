@@ -50,8 +50,14 @@ export class MarkdownStructureService {
       // bookmark set, "last opened" is automatic session continuity.
       // Failures surface through the normal error banner; we do not clear
       // the last-opened on failure (network drive offline ≠ wipe state).
+      //
+      // Deferred to a macrotask so the UI shell paints first. A huge
+      // recipe tree (or a network drive) can take noticeable time to scan
+      // in Rust, and we'd rather the user see the empty-state for a beat
+      // than stare at the Tauri window's background colour while the
+      // scan + initial parse + Mermaid lazy-load all run in one CD pass.
       const last = this.readLastBrewhouse();
-      if (last) void this.loadBrewhouse(last);
+      if (last) setTimeout(() => void this.loadBrewhouse(last), 0);
     }
   }
 
