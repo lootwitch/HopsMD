@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import type { RecipeNode } from '../../models/recipe-node.model';
+import { ContextMenuService } from '../../services/context-menu.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 
 /**
@@ -29,6 +30,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
             type="button"
             class="entry folder"
             (click)="toggle()"
+            (contextmenu)="onContextMenu($event, n)"
             [attr.aria-expanded]="open()"
             [title]="n.path"
           >
@@ -44,6 +46,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
             type="button"
             class="entry file"
             (click)="select()"
+            (contextmenu)="onContextMenu($event, n)"
             [title]="n.path"
           >
             <span class="caret placeholder">·</span>
@@ -138,6 +141,7 @@ export class FileTreeComponent {
   readonly depth = input<number>(0);
 
   private readonly state = inject(MarkdownStructureService);
+  private readonly contextMenu = inject(ContextMenuService);
 
   // Auto-open the root level so the user immediately sees the first layer.
   private readonly _open = signal<boolean>(false);
@@ -156,5 +160,9 @@ export class FileTreeComponent {
   protected select(): void {
     const n = this.node();
     if (n && !n.isDir) void this.state.selectRecipe(n);
+  }
+
+  protected onContextMenu(event: MouseEvent, n: RecipeNode): void {
+    this.contextMenu.open(n, event);
   }
 }

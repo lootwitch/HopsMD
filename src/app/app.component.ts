@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { BreweryToolbarComponent } from './components/brewery-toolbar/brewery-toolbar.component';
+import { ContextMenuComponent } from './components/context-menu/context-menu.component';
 import { FavoritesPanelComponent } from './components/favorites-panel/favorites-panel.component';
 import { FileTreeComponent } from './components/file-tree/file-tree.component';
 import { MarkdownViewComponent } from './components/markdown-view/markdown-view.component';
@@ -11,6 +12,7 @@ import { MarkdownStructureService } from './services/markdown-structure.service'
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     BreweryToolbarComponent,
+    ContextMenuComponent,
     FavoritesPanelComponent,
     FileTreeComponent,
     MarkdownViewComponent,
@@ -42,6 +44,8 @@ import { MarkdownStructureService } from './services/markdown-structure.service'
         <hops-markdown-view />
       </section>
     </main>
+
+    <hops-context-menu />
   `,
   styles: [
     `
