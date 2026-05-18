@@ -69,6 +69,15 @@ pub struct RecipeNode {
     pub children: Vec<RecipeNode>,
 }
 
+/// Returned by [`tap_recipe`]. `modified_at` is the file's last-modified time
+/// as Unix epoch milliseconds, or `None` if the platform doesn't expose it.
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RecipeContent {
+    pub content: String,
+    pub modified_at: Option<i64>,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum CommandError {
     #[error("Pfad existiert nicht: {0}")]
@@ -85,6 +94,8 @@ pub enum CommandError {
     Io(#[from] std::io::Error),
     #[error("Datei enthält ungültiges UTF-8")]
     InvalidUtf8,
+    #[error("Watcher-Fehler: {0}")]
+    Watch(String),
 }
 
 impl serde::Serialize for CommandError {
@@ -117,7 +128,7 @@ pub fn open_brewhouse(path: String) -> Result<RecipeNode, CommandError> {
 }
 
 #[tauri::command]
-pub fn tap_recipe(path: String) -> Result<String, CommandError> {
+pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
     let p = PathBuf::from(&path);
     if !p.exists() {
         return Err(CommandError::NotFound(path));
@@ -133,7 +144,30 @@ pub fn tap_recipe(path: String) -> Result<String, CommandError> {
         return Err(CommandError::TooLarge { size: meta.len() });
     }
     let bytes = fs::read(&p)?;
-    String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)
+    let content = String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)?;
+    Ok(RecipeContent {
+        content,
+        modified_at: modified_at_epoch_ms(&meta),
+    })
+}
+
+fn modified_at_epoch_ms(meta: &fs::Metadata) -> Option<i64> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let mtime = meta.modified().ok()?;
+    match mtime.duration_since(UNIX_EPOCH) {
+        Ok(d) => i64::try_from(d.as_millis()).ok(),
+        // Pre-1970 mtimes — vanishingly rare but represent negative.
+        Err(e) => {
+            let back = e.duration().as_millis();
+            i64::try_from(back).ok().map(|v| -v)
+        }
+    }
+    .or_else(|| {
+        // SystemTime fell outside i64ms range; let mtime be unknown rather
+        // than fail the whole read.
+        let _ = SystemTime::now();
+        None
+    })
 }
 
 // ---------- internals ----------

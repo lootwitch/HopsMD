@@ -43,3 +43,17 @@ export async function toAssetUrl(filePath: string): Promise<string> {
   const { convertFileSrc } = await import('@tauri-apps/api/core');
   return convertFileSrc(filePath);
 }
+
+/**
+ * Subscribe to a Tauri event. In browser-only mode this resolves to a no-op
+ * unsubscribe so callers don't need to special-case the dev workflow.
+ */
+export async function listenBridge<T>(
+  event: string,
+  handler: (payload: T) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => undefined;
+  const { listen } = await import('@tauri-apps/api/event');
+  const unlisten = await listen<T>(event, (msg) => handler(msg.payload));
+  return unlisten;
+}

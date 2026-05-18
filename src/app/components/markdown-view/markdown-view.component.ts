@@ -1,8 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   afterRenderEffect,
+  computed,
   effect,
   inject,
   signal,
@@ -13,12 +15,38 @@ import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
 
+/** How often the "Aktualisiert vor X" label re-evaluates. 5 s is fine-grained
+ *  enough that the user notices it ticking, cheap enough to ignore. */
+const RELATIVE_TIME_TICK_MS = 5_000;
+
+/** Format an mtime as a German relative label, given a "now" reference. */
+function formatRelative(mtime: number, now: number): string {
+  const deltaSec = Math.max(0, Math.floor((now - mtime) / 1000));
+  if (deltaSec < 5) return 'gerade aktualisiert';
+  if (deltaSec < 60) return `vor ${deltaSec} Sek.`;
+  const min = Math.floor(deltaSec / 60);
+  if (min < 60) return `vor ${min} Min.`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `vor ${hr} Std.`;
+  const days = Math.floor(hr / 24);
+  if (days < 7) return `vor ${days} Tag${days === 1 ? '' : 'en'}`;
+  return new Date(mtime).toLocaleDateString('de-DE');
+}
+
+/** Absolute timestamp shown as the title= tooltip of the relative label. */
+function formatAbsolute(mtime: number): string {
+  return new Date(mtime).toLocaleString('de-DE');
+}
+
 /**
  * Renders the currently selected markdown file.
  *
  * Pipeline (all signal-driven):
  *   selectedContent → parse() → html signal → bound to [innerHTML]
- *                                         → effect kicks Mermaid renderer
+ *                                          → afterRenderEffect kicks Mermaid
+ *
+ * The filebar at the top shows the absolute path plus a live "Aktualisiert
+ * vor X" badge tied to the FileWatcher event stream from Rust.
  */
 @Component({
   selector: 'hops-markdown-view',
@@ -35,6 +63,12 @@ import { MermaidRenderService } from '../../services/mermaid-render.service';
       <header class="filebar" [title]="path">
         <span class="filebar-icon">🍺</span>
         <span class="filebar-path">{{ path }}</span>
+        @if (modifiedLabel(); as label) {
+          <span class="filebar-sep">·</span>
+          <span class="filebar-modified" [title]="modifiedAbsolute()">
+            Aktualisiert {{ label }}
+          </span>
+        }
       </header>
     }
 
@@ -92,8 +126,17 @@ import { MermaidRenderService } from '../../services/mermaid-render.service';
         color: var(--hops-text-dim);
       }
       .filebar-path {
+        flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .filebar-sep {
+        color: var(--hops-malt);
+      }
+      .filebar-modified {
+        color: var(--hops-pilsner);
         white-space: nowrap;
       }
       .empty {
@@ -141,6 +184,20 @@ export class MarkdownViewComponent {
    */
   protected readonly html = signal<SafeHtml | null>(null);
 
+  /** Ticks every few seconds so the relative-time label refreshes itself. */
+  private readonly nowTick = signal<number>(Date.now());
+
+  protected readonly modifiedLabel = computed<string | null>(() => {
+    const mtime = this.state.lastModified();
+    if (mtime === null) return null;
+    return formatRelative(mtime, this.nowTick());
+  });
+
+  protected readonly modifiedAbsolute = computed<string>(() => {
+    const mtime = this.state.lastModified();
+    return mtime === null ? '' : formatAbsolute(mtime);
+  });
+
   constructor() {
     // Re-parse whenever the selected content (or its path) changes.
     effect(() => {
@@ -163,5 +220,12 @@ export class MarkdownViewComponent {
       if (!this.html()) return;
       void this.mermaid.renderAll(this.host()?.nativeElement ?? null);
     });
+
+    // Drive the relative-time label.
+    const tickId = setInterval(
+      () => this.nowTick.set(Date.now()),
+      RELATIVE_TIME_TICK_MS,
+    );
+    inject(DestroyRef).onDestroy(() => clearInterval(tickId));
   }
 }

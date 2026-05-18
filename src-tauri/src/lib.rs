@@ -10,9 +10,12 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(commands::watcher::RecipeWatcher::default())
         .invoke_handler(tauri::generate_handler![
             commands::recipe_book::open_brewhouse,
             commands::recipe_book::tap_recipe,
+            commands::watcher::watch_recipe,
+            commands::watcher::unwatch_recipe,
         ])
         .run(tauri::generate_context!())
         .expect("HopsMD: der Braukessel ist umgekippt — Tauri konnte nicht starten");
