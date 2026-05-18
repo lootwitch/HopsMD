@@ -1,0 +1,33 @@
+name: winget
+
+# After a release goes from draft → published on GitHub, this job submits a
+# PR to microsoft/winget-pkgs with the new version's manifest. The first
+# release ever still needs a manual PR (see docs/RELEASE.md) — winget-releaser
+# only handles version bumps for an already-published package.
+#
+# Required secret: WINGET_PAT — a fine-grained PAT with `public_repo` scope
+# on the fork of microsoft/winget-pkgs (the action will fork on first run if
+# needed).
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to push (omit to use latest published release)'
+        required: false
+
+jobs:
+  submit:
+    name: Submit to winget-pkgs
+    runs-on: windows-latest
+    steps:
+      - name: winget-releaser
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: CloudBrew.HopsMD
+          # Pick up both the MSI and the NSIS .exe out of the release assets.
+          installers-regex: '_x64-setup\.exe$|_x64_en-US\.msi$'
+          version: ${{ github.event.inputs.version || github.event.release.tag_name }}
+          token: ${{ secrets.WINGET_PAT }}

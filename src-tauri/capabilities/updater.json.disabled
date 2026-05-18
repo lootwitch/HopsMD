@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "updater",
+  "description": "Permissions for the in-app updater and the relaunch-after-install step. Loaded only when the `updater` Cargo feature is on — rename this file to `updater.json` to activate.",
+  "windows": ["main"],
+  "permissions": [
+    "updater:default",
+    "process:default",
+    "process:allow-restart"
+  ]
+}

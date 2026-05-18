@@ -16,6 +16,8 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
+tauri-plugin-updater = { version = "2", optional = true }
+tauri-plugin-process = { version = "2", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -24,3 +26,7 @@ notify-debouncer-mini = "0.4"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+# Enable once an ed25519 keypair has been generated and the public key is
+# pasted into tauri.conf.json — see docs/RELEASE.md. Builds without this
+# feature ship without the in-app updater (winget upgrade still works).
+updater = ["dep:tauri-plugin-updater", "dep:tauri-plugin-process"]

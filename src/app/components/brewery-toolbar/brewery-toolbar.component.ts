@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
+import { UpdaterService } from '../../services/updater.service';
 
 @Component({
   selector: 'hops-brewery-toolbar',
@@ -28,6 +29,21 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
       </div>
 
       <div class="actions">
+        @if (updater.availableVersion(); as version) {
+          <button
+            type="button"
+            class="btn update"
+            (click)="onInstallUpdate()"
+            [disabled]="updater.installing()"
+            [title]="updater.availableNotes() ?? 'Neue Version verfügbar'"
+          >
+            @if (updater.installing()) {
+              <span>Maischt das Update…</span>
+            } @else {
+              <span>🍻 Neuer Sud {{ version }} — jetzt installieren</span>
+            }
+          </button>
+        }
         <button type="button" class="btn primary" (click)="onOpen()" [disabled]="state.loading()">
           Sudhaus auswählen
         </button>
@@ -146,11 +162,24 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
         border-color: var(--hops-pilsner);
         color: var(--hops-foam);
       }
+      .btn.update {
+        background: var(--hops-leaf);
+        color: var(--hops-stout);
+        animation: pulse 2.4s ease-in-out infinite;
+      }
+      .btn.update:hover:not(:disabled) {
+        background: #88c466;
+      }
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(110, 168, 79, 0.45); }
+        50% { box-shadow: 0 0 0 6px rgba(110, 168, 79, 0); }
+      }
     `,
   ],
 })
 export class BreweryToolbarComponent {
   protected readonly state = inject(MarkdownStructureService);
+  protected readonly updater = inject(UpdaterService);
 
   protected onOpen(): void {
     void this.state.openBrewhouse();
@@ -158,5 +187,9 @@ export class BreweryToolbarComponent {
 
   protected onRefresh(): void {
     void this.state.refresh();
+  }
+
+  protected onInstallUpdate(): void {
+    void this.updater.install();
   }
 }

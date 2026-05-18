@@ -33,7 +33,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
+    "publisher": "CloudBrew",
+    "homepage": "https://github.com/CloudBrew/HopsMD",
+    "copyright": "© 2026 Ludwig Biermann (CloudBrew)",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -43,6 +46,31 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "Local Markdown & Mermaid viewer",
-    "longDescription": "HopsMD is a tiny offline reader for Markdown documentation with live Mermaid diagram rendering — a side project of the CloudBrew family."
+    "longDescription": "HopsMD is a tiny offline reader for Markdown documentation with live Mermaid diagram rendering — a side project of the CloudBrew family.",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "installerIcon": "icons/icon.ico",
+        "languages": ["English", "German"],
+        "displayLanguageSelector": true
+      },
+      "wix": {
+        "language": "en-US"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": false,
+      "endpoints": [
+        "https://github.com/CloudBrew/HopsMD/releases/latest/download/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "REPLACE_AFTER_RUNNING_npx_tauri_signer_generate"
+    }
   }
 }

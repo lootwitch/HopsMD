@@ -8,9 +8,19 @@ mod commands;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(commands::watcher::RecipeWatcher::default())
+        .manage(commands::watcher::RecipeWatcher::default());
+
+    // In-app updater is feature-gated so the build still succeeds before the
+    // ed25519 keypair has been generated. Enable with `cargo build --features
+    // updater` (or via tauri-action's `args:` in the release workflow).
+    #[cfg(feature = "updater")]
+    let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
+
+    builder
         .invoke_handler(tauri::generate_handler![
             commands::recipe_book::open_brewhouse,
             commands::recipe_book::tap_recipe,

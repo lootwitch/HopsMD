@@ -1,0 +1,87 @@
+name: release
+
+# Tag-driven release pipeline.
+# Pushing a tag like `v0.2.0` builds the Windows MSI + NSIS installers and
+# attaches them to a GitHub Release. A separate workflow (winget.yml) then
+# auto-PRs the matching version into microsoft/winget-pkgs.
+#
+# Code signing: env vars below are wired but the secrets are intentionally
+# unset for now — the resulting installers are unsigned and SmartScreen will
+# warn first-time users. To enable signing (SignPath.io OSS or any cert):
+# fill the secrets in repo Settings → Secrets → Actions.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows installers
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build with tauri-action
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ----- updater signing (ed25519, from `npx tauri signer generate`) -----
+          # Generate locally, paste public key into tauri.conf.json plugins.updater.pubkey,
+          # store private key + password as repo secrets. While empty the
+          # updater plugin still builds, but signed update artefacts won't be
+          # produced and the in-app updater will fail to verify.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # ----- code signing (SignPath / EV cert) — wire later -----
+          # WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          # WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'HopsMD ${{ github.ref_name }}'
+          releaseBody: |
+            ## HopsMD ${{ github.ref_name }}
+
+            Local Markdown & Mermaid viewer — a CloudBrew side project.
+
+            ### Install
+
+            **winget** (after the manifest is merged into winget-pkgs):
+            ```
+            winget install CloudBrew.HopsMD
+            ```
+
+            **Manual:** download the MSI or NSIS installer below.
+
+            > First-time users may see a SmartScreen warning ("Unbekannter
+            > Herausgeber"). Click **Weitere Informationen → Trotzdem ausführen**
+            > — the installer is unsigned during the MVP phase. SignPath.io OSS
+            > signing is on the roadmap.
+
+            See [CHANGELOG.md](https://github.com/CloudBrew/HopsMD/blob/main/CHANGELOG.md) for what's new.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true
+          args: --target x86_64-pc-windows-msvc
