@@ -238,8 +238,63 @@ fn sort_nodes(a: &RecipeNode, b: &RecipeNode) -> Ordering {
     match (a.is_dir, b.is_dir) {
         (true, false) => Ordering::Less,
         (false, true) => Ordering::Greater,
-        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        _ => natural_compare(&a.name, &b.name),
     }
+}
+
+/// Compare two names the way humans expect to see filenames sorted:
+/// case-insensitive, with embedded numeric runs treated as numbers — so
+/// "Kapitel 2" sorts before "Kapitel 10", and "10-Setup.md" before
+/// "2-Setup.md" both group naturally with their siblings. Falls back to
+/// case-sensitive compare to make ties between equal-lowercased names
+/// deterministic ("a.md" stable relative to "A.md").
+fn natural_compare(a: &str, b: &str) -> Ordering {
+    let a_norm = a.to_lowercase();
+    let b_norm = b.to_lowercase();
+    let mut ai = a_norm.chars().peekable();
+    let mut bi = b_norm.chars().peekable();
+
+    loop {
+        match (ai.peek().copied(), bi.peek().copied()) {
+            (None, None) => break,
+            (None, _) => return Ordering::Less,
+            (_, None) => return Ordering::Greater,
+            (Some(ac), Some(bc)) => {
+                if ac.is_ascii_digit() && bc.is_ascii_digit() {
+                    let an = consume_digits(&mut ai);
+                    let bn = consume_digits(&mut bi);
+                    match an.cmp(&bn) {
+                        Ordering::Equal => continue,
+                        other => return other,
+                    }
+                } else {
+                    ai.next();
+                    bi.next();
+                    match ac.cmp(&bc) {
+                        Ordering::Equal => continue,
+                        other => return other,
+                    }
+                }
+            }
+        }
+    }
+    // Lowercased forms compare equal — break the tie with the original
+    // so the order is stable between runs.
+    a.cmp(b)
+}
+
+fn consume_digits<I: Iterator<Item = char>>(iter: &mut std::iter::Peekable<I>) -> u64 {
+    let mut n: u64 = 0;
+    while let Some(&c) = iter.peek() {
+        if !c.is_ascii_digit() {
+            break;
+        }
+        n = n
+            .saturating_mul(10)
+            .saturating_add(c.to_digit(10).unwrap_or(0) as u64);
+        iter.next();
+    }
+    n
 }
 
 fn is_markdown(path: &Path) -> bool {
