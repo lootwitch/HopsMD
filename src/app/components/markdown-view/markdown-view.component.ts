@@ -14,6 +14,7 @@ import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { openPathBridge } from '../../core/tauri-bridge';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
+import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
 
 /** How often the "Aktualisiert vor X" label re-evaluates. 5 s is fine-grained
@@ -174,6 +175,7 @@ export class MarkdownViewComponent {
   protected readonly state = inject(MarkdownStructureService);
   private readonly parser = inject(MarkdownParserService);
   private readonly mermaid = inject(MermaidRenderService);
+  private readonly fullscreen = inject(MermaidFullscreenService);
   private readonly sanitizer = inject(DomSanitizer);
 
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
@@ -257,8 +259,16 @@ export class MarkdownViewComponent {
       case 'open-editor':
         void this.openInEditor();
         break;
-      // 'fullscreen' is handled in a follow-up commit.
+      case 'fullscreen':
+        this.openFullscreen(block);
+        break;
     }
+  }
+
+  private openFullscreen(block: HTMLElement): void {
+    const svg = block.querySelector<SVGElement>('.hops-code-rendered svg');
+    if (!svg) return; // not rendered yet (or spoiled)
+    this.fullscreen.open(svg.cloneNode(true) as SVGElement);
   }
 
   private async copySource(block: HTMLElement, button: HTMLElement): Promise<void> {

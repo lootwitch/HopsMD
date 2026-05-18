@@ -4,6 +4,7 @@ import { ContextMenuComponent } from './components/context-menu/context-menu.com
 import { FavoritesPanelComponent } from './components/favorites-panel/favorites-panel.component';
 import { FileTreeComponent } from './components/file-tree/file-tree.component';
 import { MarkdownViewComponent } from './components/markdown-view/markdown-view.component';
+import { MermaidFullscreenComponent } from './components/mermaid-fullscreen/mermaid-fullscreen.component';
 import { MarkdownStructureService } from './services/markdown-structure.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { MarkdownStructureService } from './services/markdown-structure.service'
     FavoritesPanelComponent,
     FileTreeComponent,
     MarkdownViewComponent,
+    MermaidFullscreenComponent,
   ],
   template: `
     <hops-brewery-toolbar />
@@ -46,6 +48,7 @@ import { MarkdownStructureService } from './services/markdown-structure.service'
     </main>
 
     <hops-context-menu />
+    <hops-mermaid-fullscreen />
   `,
   styles: [
     `
