@@ -2,11 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  afterRenderEffect,
   effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
@@ -127,10 +129,17 @@ export class MarkdownViewComponent {
   protected readonly state = inject(MarkdownStructureService);
   private readonly parser = inject(MarkdownParserService);
   private readonly mermaid = inject(MermaidRenderService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
 
-  protected readonly html = signal<string>('');
+  /**
+   * The rendered HTML, pre-sanitised by our parser (marked + DOMPurify) and
+   * then wrapped in `SafeHtml` to bypass Angular's second-pass sanitizer —
+   * otherwise Angular would strip the `id` and `data-*` attributes on our
+   * Mermaid placeholder DIVs, leaving the renderer with nothing to find.
+   */
+  protected readonly html = signal<SafeHtml | null>(null);
 
   constructor() {
     // Re-parse whenever the selected content (or its path) changes.
@@ -138,20 +147,21 @@ export class MarkdownViewComponent {
       const content = this.state.selectedContent();
       const path = this.state.selectedPath();
       if (!content) {
-        this.html.set('');
+        this.html.set(null);
         return;
       }
-      void this.parser.parse(content, path).then((rendered) => this.html.set(rendered));
+      void this.parser.parse(content, path).then((rendered) => {
+        this.html.set(this.sanitizer.bypassSecurityTrustHtml(rendered));
+      });
     });
 
-    // After the HTML has been bound, render any pending Mermaid placeholders.
-    effect(() => {
-      // Read the signal to register the dependency, even if value goes unused.
+    // After the HTML has been written into the DOM by [innerHTML], find any
+    // pending Mermaid placeholders and render them. afterRenderEffect fires
+    // *after* Angular has applied the binding, so the placeholders we just
+    // produced are guaranteed to be in the DOM.
+    afterRenderEffect(() => {
       if (!this.html()) return;
-      queueMicrotask(() => {
-        const el = this.host()?.nativeElement ?? null;
-        void this.mermaid.renderAll(el);
-      });
+      void this.mermaid.renderAll(this.host()?.nativeElement ?? null);
     });
   }
 }
