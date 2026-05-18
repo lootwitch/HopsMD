@@ -16,8 +16,11 @@
   --hops-text-dim: #b9ad8e;
   --hops-border: rgba(245, 197, 66, 0.18);
 
-  --hops-font: "Segoe UI", "Inter", system-ui, sans-serif;
-  --hops-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  /* Font stacks — kept here as a no-JS fallback for the very first paint.
+     Runtime source of truth is FontsService (src/app/services/fonts.service.ts);
+     edit DEFAULT_BODY_FONT / DEFAULT_MONO_FONT there to change app-wide. */
+  --hops-font: "Segoe UI", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --hops-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace;
 }
 
 * {
