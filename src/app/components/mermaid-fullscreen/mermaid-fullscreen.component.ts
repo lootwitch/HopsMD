@@ -137,10 +137,6 @@ const KEY_STEP = 1.25;   // chunkier per key press
         transform-origin: 0 0;
         will-change: transform;
       }
-      .content :global(svg),
-      .content > :first-child {
-        display: block;
-      }
     `,
   ],
 })
@@ -154,6 +150,9 @@ export class MermaidFullscreenComponent {
   private readonly translateX = signal<number>(0);
   private readonly translateY = signal<number>(0);
   private mountedSvg: SVGElement | null = null;
+  /** Natural SVG dimensions (from viewBox) — transform-independent. */
+  private naturalW = 0;
+  private naturalH = 0;
 
   protected readonly transform = computed(
     () =>
@@ -178,14 +177,22 @@ export class MermaidFullscreenComponent {
       if (!contentEl) return; // wait until next render fires the viewChild
       if (this.mountedSvg === svg) return;
       contentEl.innerHTML = '';
-      // Strip explicit width/height that mermaid sometimes bakes in, so our
-      // CSS transform can scale freely.
-      svg.removeAttribute('width');
-      svg.removeAttribute('height');
+      // Pin the SVG to explicit pixel dimensions from its viewBox. Mermaid's
+      // default `width="100%"` + max-width style would collapse to zero
+      // inside our absolute-positioned, sizeless `.content` container, so
+      // we substitute concrete dimensions and let CSS transform handle all
+      // scaling instead.
+      const vb = (svg as SVGSVGElement).viewBox?.baseVal;
+      this.naturalW = vb && vb.width > 0 ? vb.width : 800;
+      this.naturalH = vb && vb.height > 0 ? vb.height : 600;
+      svg.setAttribute('width', String(this.naturalW));
+      svg.setAttribute('height', String(this.naturalH));
+      svg.style.maxWidth = 'none';
+      svg.style.display = 'block';
       contentEl.appendChild(svg);
       this.mountedSvg = svg;
-      // Defer the fit until layout settles — getBoundingClientRect on a
-      // brand-new node otherwise returns zeros.
+      // Defer the fit until layout settles — host viewport size is needed
+      // and the @if-rendered overlay only finishes laying out after CD.
       queueMicrotask(() => this.reset());
     });
 
@@ -226,28 +233,34 @@ export class MermaidFullscreenComponent {
     this.zoomAroundCenter(1 / KEY_STEP);
   }
 
-  /** Fit the SVG inside the viewport, centred. */
+  /** Fit the SVG inside the viewport, centred. Uses the viewBox-derived
+   *  natural size so the calc is independent of the current transform —
+   *  reading getBoundingClientRect after setting signals would return the
+   *  pre-CD layout and produce wrong fits on every key press of "0". */
   protected reset(): void {
     const hostEl = this.host()?.nativeElement;
-    const contentEl = this.content()?.nativeElement;
-    if (!hostEl || !contentEl) return;
+    if (!hostEl || this.naturalW === 0 || this.naturalH === 0) {
+      this.scale.set(1);
+      this.translateX.set(0);
+      this.translateY.set(0);
+      return;
+    }
     const hostRect = hostEl.getBoundingClientRect();
-    // Measure the natural content size at scale=1, translate=0.
-    this.scale.set(1);
-    this.translateX.set(0);
-    this.translateY.set(0);
-    // Force a synchronous layout read.
-    const contentRect = contentEl.getBoundingClientRect();
-    if (contentRect.width === 0 || contentRect.height === 0) return;
+    if (hostRect.width === 0 || hostRect.height === 0) {
+      // Overlay isn't laid out yet (e.g. called before the @if branch
+      // finished painting). Retry next frame.
+      requestAnimationFrame(() => this.reset());
+      return;
+    }
     const padding = 32;
     const fit = Math.min(
-      (hostRect.width - padding * 2) / contentRect.width,
-      (hostRect.height - padding * 2) / contentRect.height,
+      (hostRect.width - padding * 2) / this.naturalW,
+      (hostRect.height - padding * 2) / this.naturalH,
     );
-    const newScale = Math.min(1, Math.max(MIN_SCALE, fit));
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, fit));
+    const scaledW = this.naturalW * newScale;
+    const scaledH = this.naturalH * newScale;
     this.scale.set(newScale);
-    const scaledW = contentRect.width * newScale;
-    const scaledH = contentRect.height * newScale;
     this.translateX.set((hostRect.width - scaledW) / 2);
     this.translateY.set((hostRect.height - scaledH) / 2);
   }
