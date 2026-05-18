@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { invokeBridge, isTauri, listenBridge, pickBrewhouse } from '../core/tauri-bridge';
 import type { RecipeContent } from '../models/recipe-content.model';
 import type { RecipeNode } from '../models/recipe-node.model';
+import { FavoritesService } from './favorites.service';
 
 const EVENT_RECIPE_CHANGED = 'recipe:changed';
 
@@ -43,6 +44,13 @@ export class MarkdownStructureService {
       void listenBridge<string>(EVENT_RECIPE_CHANGED, (path) => this.onRecipeChanged(path))
         .then((fn) => (unlisten = fn));
       inject(DestroyRef).onDestroy(() => unlisten?.());
+
+      // Auto-open the Stammsudhaus (pinned brewhouse) on startup. Failures
+      // here surface through the normal error banner — we deliberately do
+      // NOT clear the pin on failure (a missing network drive shouldn't
+      // wipe the user's preference).
+      const fav = inject(FavoritesService).favorite();
+      if (fav) void this.loadBrewhouse(fav);
     }
   }
 
