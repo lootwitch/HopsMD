@@ -149,12 +149,31 @@ First build downloads WiX 3 + NSIS to the user-local Tauri cache (one-time,
 
 ### Testing the local manifest against winget
 
+The committed manifests in `winget/` point at the future GitHub Release
+URLs and use SHA256 placeholders — they're for the upstream PR, not for
+local installation. To test the winget flow against your local build:
+
 ```powershell
-winget install --manifest .\winget\
+# One-time:
+winget settings --enable LocalManifestFiles
+
+# Build installers + spin up a loopback HTTP server + write a throw-away
+# manifest with real hashes to winget/local/ (gitignored):
+npm run tauri:build
+python scripts\winget_local_test.py
+
+# In a second shell:
+winget install --manifest .\winget\local\
+
+# Cleanup:
+winget uninstall CloudBrew.HopsMD
+# Ctrl+C in the first shell to stop the HTTP server
 ```
 
-That command resolves the multi-file manifest in the `winget/` directory
-and runs the installer. Useful before opening a PR upstream.
+Why the HTTP server: winget's manifest schema rejects `file://` URLs in
+`InstallerUrl` and the install path always re-downloads + hash-verifies
+the artefact, so we serve the bundle folder over `http://127.0.0.1:8765`
+just long enough for the install to finish.
 
 ---
 
