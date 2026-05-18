@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { BreweryToolbarComponent } from './components/brewery-toolbar/brewery-toolbar.component';
+import { FavoritesPanelComponent } from './components/favorites-panel/favorites-panel.component';
 import { FileTreeComponent } from './components/file-tree/file-tree.component';
 import { MarkdownViewComponent } from './components/markdown-view/markdown-view.component';
 import { MarkdownStructureService } from './services/markdown-structure.service';
@@ -8,12 +9,19 @@ import { MarkdownStructureService } from './services/markdown-structure.service'
   selector: 'hops-root',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BreweryToolbarComponent, FileTreeComponent, MarkdownViewComponent],
+  imports: [
+    BreweryToolbarComponent,
+    FavoritesPanelComponent,
+    FileTreeComponent,
+    MarkdownViewComponent,
+  ],
   template: `
     <hops-brewery-toolbar />
 
     <main class="layout">
-      <aside class="sidebar" aria-label="Rezeptbuch">
+      <aside class="sidebar" aria-label="Sudhause und Rezeptbuch">
+        <hops-favorites-panel />
+
         <div class="sidebar-header">
           <span>🍻</span>
           <span>Rezeptbuch</span>

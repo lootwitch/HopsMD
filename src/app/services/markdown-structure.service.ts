@@ -2,9 +2,9 @@ import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core'
 import { invokeBridge, isTauri, listenBridge, pickBrewhouse } from '../core/tauri-bridge';
 import type { RecipeContent } from '../models/recipe-content.model';
 import type { RecipeNode } from '../models/recipe-node.model';
-import { FavoritesService } from './favorites.service';
 
 const EVENT_RECIPE_CHANGED = 'recipe:changed';
+const LAST_BREWHOUSE_KEY = 'hopsmd:lastBrewhouse';
 
 /**
  * Owns the tree-shaped state of the currently opened workspace
@@ -45,13 +45,19 @@ export class MarkdownStructureService {
         .then((fn) => (unlisten = fn));
       inject(DestroyRef).onDestroy(() => unlisten?.());
 
-      // Auto-open the Stammsudhaus (pinned brewhouse) on startup. Failures
-      // here surface through the normal error banner — we deliberately do
-      // NOT clear the pin on failure (a missing network drive shouldn't
-      // wipe the user's preference).
-      const fav = inject(FavoritesService).favorite();
-      if (fav) void this.loadBrewhouse(fav);
+      // Auto-open the brewhouse that was active last time we ran. This is
+      // decoupled from the favourites list — favourites are a manual
+      // bookmark set, "last opened" is automatic session continuity.
+      // Failures surface through the normal error banner; we do not clear
+      // the last-opened on failure (network drive offline ≠ wipe state).
+      const last = this.readLastBrewhouse();
+      if (last) void this.loadBrewhouse(last);
     }
+  }
+
+  /** Switch to a brewhouse by absolute path (e.g. from the favourites list). */
+  async openByPath(path: string): Promise<void> {
+    await this.loadBrewhouse(path);
   }
 
   /** Show the native folder picker, then scan the chosen Sudhaus. */
@@ -138,12 +144,29 @@ export class MarkdownStructureService {
       const tree = await invokeBridge<RecipeNode>('open_brewhouse', { path });
       this._tree.set(tree);
       this._brewhouse.set(tree.path);
+      this.writeLastBrewhouse(tree.path);
     } catch (err) {
       this._tree.set(null);
       this._brewhouse.set(null);
       this._error.set(this.describe(err));
     } finally {
       this._loading.set(false);
+    }
+  }
+
+  private readLastBrewhouse(): string | null {
+    try {
+      return localStorage.getItem(LAST_BREWHOUSE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  private writeLastBrewhouse(path: string): void {
+    try {
+      localStorage.setItem(LAST_BREWHOUSE_KEY, path);
+    } catch {
+      // Private mode / disabled storage — auto-resume just won't work next time.
     }
   }
 

@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { FavoritesService } from '../../services/favorites.service';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { UpdaterService } from '../../services/updater.service';
 
@@ -18,25 +17,11 @@ import { UpdaterService } from '../../services/updater.service';
       </div>
 
       <div class="status">
-        @if (state.brewhouse(); as path) {
-          <span class="status-label">Sudhaus:</span>
+        @if (state.selectedPath(); as path) {
+          <span class="status-label">Datei:</span>
           <span class="status-path" [title]="path">{{ path }}</span>
-          <button
-            type="button"
-            class="pin-btn"
-            [class.active]="isPinned()"
-            (click)="onTogglePin()"
-            [title]="pinTooltip()"
-            [attr.aria-pressed]="isPinned()"
-            aria-label="Stammsudhaus anstecken"
-          >
-            <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-              <path
-                d="M8 1.4 C5.2 1.4 3.2 3.4 3.2 6 c0 3.6 4.8 8.4 4.8 8.4 s4.8-4.8 4.8-8.4 c0-2.6-2-4.6-4.8-4.6 z M8 4.4 c0.9 0 1.6 0.7 1.6 1.6 s-0.7 1.6-1.6 1.6 s-1.6-0.7-1.6-1.6 s0.7-1.6 1.6-1.6 z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
+        } @else if (state.isOpen()) {
+          <span class="status-empty">Keine Datei geöffnet — wähle links ein Rezept aus.</span>
         } @else {
           <span class="status-empty">Noch kein Sud im Kessel.</span>
         }
@@ -123,6 +108,7 @@ import { UpdaterService } from '../../services/updater.service';
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        flex-shrink: 0;
       }
       .status-path {
         color: var(--hops-foam);
@@ -131,6 +117,7 @@ import { UpdaterService } from '../../services/updater.service';
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        min-width: 0;
       }
       .status-empty {
         color: var(--hops-text-dim);
@@ -140,39 +127,11 @@ import { UpdaterService } from '../../services/updater.service';
         color: var(--hops-pilsner);
         font-size: 0.75rem;
         animation: shimmer 1.4s ease-in-out infinite;
+        flex-shrink: 0;
       }
       @keyframes shimmer {
         0%, 100% { opacity: 0.6; }
         50% { opacity: 1; }
-      }
-      .pin-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        padding: 0;
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 50%;
-        color: var(--hops-text-dim);
-        cursor: pointer;
-        transition: color 0.15s, background 0.15s, transform 0.12s;
-      }
-      .pin-btn:hover {
-        color: var(--hops-foam);
-        background: rgba(245, 197, 66, 0.08);
-      }
-      .pin-btn:active {
-        transform: scale(0.92);
-      }
-      .pin-btn.active {
-        color: var(--hops-pilsner);
-        filter: drop-shadow(0 0 4px rgba(245, 197, 66, 0.45));
-      }
-      .pin-btn.active:hover {
-        color: #ffd25b;
-        background: rgba(245, 197, 66, 0.15);
       }
       .actions {
         display: flex;
@@ -226,17 +185,6 @@ import { UpdaterService } from '../../services/updater.service';
 export class BreweryToolbarComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly updater = inject(UpdaterService);
-  private readonly favorites = inject(FavoritesService);
-
-  protected readonly isPinned = computed(() =>
-    this.favorites.isPinned(this.state.brewhouse()),
-  );
-
-  protected readonly pinTooltip = computed(() =>
-    this.isPinned()
-      ? 'Stammsudhaus — Pin entfernen (kein Auto-Öffnen mehr beim Start)'
-      : 'Als Stammsudhaus anstecken (beim Start automatisch öffnen)',
-  );
 
   protected onOpen(): void {
     void this.state.openBrewhouse();
@@ -248,9 +196,5 @@ export class BreweryToolbarComponent {
 
   protected onInstallUpdate(): void {
     void this.updater.install();
-  }
-
-  protected onTogglePin(): void {
-    this.favorites.toggle(this.state.brewhouse());
   }
 }
