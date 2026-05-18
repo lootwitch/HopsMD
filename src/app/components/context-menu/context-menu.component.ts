@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { openPathBridge, revealInExplorer } from '../../core/tauri-bridge';
 import { ContextMenuService } from '../../services/context-menu.service';
+import { MarkdownStructureService } from '../../services/markdown-structure.service';
 
 /**
  * Right-click menu for tree entries. Renders a small floating panel at the
@@ -117,6 +118,7 @@ import { ContextMenuService } from '../../services/context-menu.service';
 })
 export class ContextMenuComponent {
   protected readonly ctx = inject(ContextMenuService);
+  private readonly state = inject(MarkdownStructureService);
   private readonly menuEl = viewChild<ElementRef<HTMLElement>>('menuEl');
 
   private readonly currentNode = computed(() => this.ctx.state()?.node ?? null);
@@ -181,8 +183,9 @@ export class ContextMenuComponent {
     try {
       await fn();
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('[HopsMD] context-menu action failed:', err);
+      this.state.showError(
+        `Aktion fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

@@ -60,6 +60,16 @@ export class MarkdownStructureService {
     await this.loadBrewhouse(path);
   }
 
+  /** Surface a one-off error message in the same banner the loader uses. */
+  showError(message: string): void {
+    this._error.set(message);
+  }
+
+  /** Clear the error banner. */
+  clearError(): void {
+    this._error.set(null);
+  }
+
   /** Show the native folder picker, then scan the chosen Sudhaus. */
   async openBrewhouse(): Promise<void> {
     try {

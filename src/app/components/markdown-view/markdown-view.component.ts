@@ -266,9 +266,18 @@ export class MarkdownViewComponent {
   }
 
   private openFullscreen(block: HTMLElement): void {
-    const svg = block.querySelector<SVGElement>('.hops-code-rendered svg');
-    if (!svg) return; // not rendered yet (or spoiled)
-    this.fullscreen.open(svg.cloneNode(true) as SVGElement);
+    const source = decodeBase64(block.dataset['source'] ?? '');
+    if (!source) return;
+    // Re-render Mermaid from source rather than cloning the inline SVG —
+    // cloneNode duplicates IDs of <marker>/<defs>, the browser then resolves
+    // url(#id) references to whichever node it finds first in document
+    // order (usually the original), and the fullscreen copy renders blank.
+    void this.mermaid
+      .renderToSvg(source)
+      .then((svg) => {
+        if (svg) this.fullscreen.open(svg);
+        else this.state.showError('Diagramm konnte für Vollbild nicht erneut gerendert werden.');
+      });
   }
 
   private async copySource(block: HTMLElement, button: HTMLElement): Promise<void> {
@@ -313,12 +322,16 @@ export class MarkdownViewComponent {
 
   private async openInEditor(): Promise<void> {
     const path = this.state.selectedPath();
-    if (!path) return;
+    if (!path) {
+      this.state.showError('Kein Dokument geöffnet — nichts zum Editieren.');
+      return;
+    }
     try {
       await openPathBridge(path);
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('[HopsMD] open in editor failed:', err);
+      this.state.showError(
+        `Editor konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }

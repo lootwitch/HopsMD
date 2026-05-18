@@ -64,6 +64,27 @@ export class MermaidRenderService {
     return this.mermaidPromise;
   }
 
+  /**
+   * Render a Mermaid source string into a fresh, standalone SVG element.
+   * Used by the fullscreen overlay so the popped-out diagram doesn't share
+   * its internal IDs (markers, gradients, …) with the inline copy — which
+   * would otherwise leak `url(#…)` references to the original SVG and make
+   * the clone appear blank.
+   */
+  async renderToSvg(source: string): Promise<SVGElement | null> {
+    const mermaid = await this.getMermaid();
+    const renderId = `hops-mermaid-fs-${++this.counter}`;
+    try {
+      const { svg } = await mermaid.render(renderId, source);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = svg;
+      const el = wrapper.firstElementChild;
+      return el instanceof SVGElement ? el : null;
+    } catch {
+      return null;
+    }
+  }
+
   /** Render every still-pending mermaid block inside `container`. */
   async renderAll(container: HTMLElement | null): Promise<void> {
     if (!container) return;
