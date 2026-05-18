@@ -1,0 +1,38 @@
+# --- Node / Angular ---
+node_modules/
+dist/
+.angular/
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+
+# --- Rust / Tauri ---
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock.bak
+src-tauri/WixTools/
+src-tauri/.cargo/
+
+# --- IDE ---
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.iml
+.fleet/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Test/coverage ---
+coverage/
+*.lcov
+.nyc_output/
+
+# --- Misc ---
+.tauri/
+*.tsbuildinfo
