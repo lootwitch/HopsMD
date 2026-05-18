@@ -2,6 +2,13 @@
 
 > _Brewing Markdown, one document at a time._
 
+[![Release](https://img.shields.io/github/v/release/CloudBrew/HopsMD?display_name=tag&sort=semver)](https://github.com/CloudBrew/HopsMD/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/CloudBrew/HopsMD/release.yml?label=build)](https://github.com/CloudBrew/HopsMD/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f5c542.svg)](./LICENSE)
+[![Made with Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
+[![Made with Angular](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)](https://angular.dev)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-c87b1e.svg)](https://www.conventionalcommits.org)
+
 A lightweight, local-first Markdown & Mermaid viewer built on **Tauri v2** + **Angular 21**.
 HopsMD is a side project of the **CloudBrew** family — a small love letter to documentation
 and to a properly poured pint of beer.
@@ -12,8 +19,35 @@ and to a properly poured pint of beer.
 - Browse the recursive Markdown tree (the **Rezeptbuch / Recipe Book**) in a left sidebar.
 - View any `.md` file with full rendering: GitHub-flavoured Markdown, syntax-highlighted
   code, locally-resolved images, and **live MermaidJS diagrams**.
+- Auto-refresh on external edits — save in your editor, the view updates within ~250 ms.
+- "Aktualisiert vor X" badge keeps you honest about how stale the open file is.
 - Mermaid syntax errors surface as a `<pre>` inside the affected diagram container —
   one bad batch never ruins the whole brew.
+
+## Install
+
+### winget (recommended, once the manifest is merged upstream)
+
+```powershell
+winget install CloudBrew.HopsMD
+```
+
+### Manual download
+
+Grab the installer from [the latest GitHub Release](https://github.com/CloudBrew/HopsMD/releases/latest):
+
+- `HopsMD_<version>_x64-setup.exe` — NSIS, smaller, per-machine
+- `HopsMD_<version>_x64_en-US.msi` — MSI, group-policy friendly
+
+> **First-time SmartScreen warning:** installers are unsigned during the MVP
+> phase. Click **More info → Run anyway** to proceed. Code signing via
+> [SignPath.io OSS](https://signpath.org/opensource) is on the roadmap.
+
+### Updates
+
+- Installed via winget? `winget upgrade CloudBrew.HopsMD`
+- Installed manually? The in-app updater (when active) shows a banner
+  "🍻 Neuer Sud — jetzt installieren" in the toolbar.
 
 ## Tech stack
 
@@ -22,8 +56,11 @@ and to a properly poured pint of beer.
 | Shell       | Tauri v2 (Rust) — minimal: filesystem bridge only               |
 | UI          | Angular 21 — standalone components, signals everywhere          |
 | Markdown    | [`marked`](https://marked.js.org) with a custom renderer        |
-| Diagrams    | [`mermaid`](https://mermaid.js.org) v11                         |
-| Sanitizer   | `DOMPurify`                                                     |
+| Diagrams    | [`mermaid`](https://mermaid.js.org) v11, lazy-loaded             |
+| Sanitizer   | `DOMPurify` (output then re-trusted for Angular's `[innerHTML]`)|
+| Watcher     | [`notify-debouncer-mini`](https://crates.io/crates/notify-debouncer-mini) — 250 ms debounce |
+| Installer   | NSIS + MSI (WiX 3) via `cargo tauri build`                       |
+| Updater     | `tauri-plugin-updater` + ed25519 signatures (feature-gated)      |
 
 ## Project layout
 
@@ -31,14 +68,17 @@ and to a properly poured pint of beer.
 HopsMD/
 ├── src/                  # Angular workspace (the Schankraum / tap room)
 │   └── app/
-│       ├── services/     # MarkdownStructure, MarkdownParser, MermaidRender
+│       ├── services/     # MarkdownStructure, MarkdownParser, MermaidRender, Updater
 │       ├── components/   # FileTree, MarkdownView, BreweryToolbar
+│       ├── core/         # tauri-bridge, path-utils
 │       └── models/
 ├── src-tauri/            # Tauri / Rust shell (the Braukessel / brew kettle)
-│   ├── src/commands/     # recipe_book.rs — file tree & file read commands
+│   ├── src/commands/     # recipe_book.rs (file tree + read), watcher.rs
 │   ├── capabilities/
 │   └── tauri.conf.json
-└── package.json
+├── winget/               # winget-pkgs manifest templates
+├── .github/workflows/    # release.yml + winget.yml
+└── docs/RELEASE.md       # human runbook
 ```
 
 ## Local development
@@ -61,6 +101,8 @@ Production build:
 
 ```bash
 npm run tauri:build
+# → src-tauri/target/release/bundle/nsis/HopsMD_<v>_x64-setup.exe
+# → src-tauri/target/release/bundle/msi/HopsMD_<v>_x64_en-US.msi
 ```
 
 ## Brewing glossary
@@ -76,7 +118,20 @@ still searchable.
 | Maischen           | loading              | Async I/O in flight                      |
 | Trübung            | error                | Syntax error in a Mermaid block          |
 | Frisch gezapft     | freshly rendered     | Successful Mermaid render                |
+| Nachschlag         | refresh              | Re-scan the workspace                    |
+| Neuer Sud          | new version          | Available update                         |
+
+## Contributing
+
+Bug reports, fixes, and ideas welcome. See [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+for the build/test/PR workflow and [`docs/RELEASE.md`](./docs/RELEASE.md) for
+the release runbook. Security findings go through
+[GitHub Security Advisories](https://github.com/CloudBrew/HopsMD/security/advisories/new)
+(see [`SECURITY.md`](./SECURITY.md)).
+
+Changes are tracked in [`CHANGELOG.md`](./CHANGELOG.md) following
+[Keep a Changelog](https://keepachangelog.com/).
 
 ## License
 
-Personal project. © Ludwig Biermann.
+[MIT](./LICENSE) © 2026 Ludwig Biermann.

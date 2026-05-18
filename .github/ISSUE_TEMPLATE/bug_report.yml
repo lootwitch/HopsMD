@@ -1,0 +1,81 @@
+name: 🐛 Bug Report
+description: Report a problem with HopsMD — a diagram that doesn't render, a folder that crashes the tree, anything that "shouldn't be this way".
+title: "[bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Before opening:
+        - check the [existing issues](https://github.com/CloudBrew/HopsMD/issues?q=is%3Aissue) to avoid duplicates
+        - if it's a security finding, please use the
+          [private advisory flow](https://github.com/CloudBrew/HopsMD/security/advisories/new) instead
+
+  - type: input
+    id: version
+    attributes:
+      label: HopsMD version
+      description: Help → About, or check `Cargo.toml` / `package.json` when building from source.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install?
+      options:
+        - winget
+        - MSI installer (downloaded from GitHub Releases)
+        - NSIS installer (.exe from GitHub Releases)
+        - Built from source (`cargo tauri build`)
+        - Dev mode (`npm run tauri:dev`)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system + version
+      description: Run `winver` to get a precise build number.
+      placeholder: "Windows 11 Pro 24H2 (build 26200)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what did you see instead?
+      placeholder: |
+        I opened a folder containing a Markdown file with a Mermaid block.
+        I expected the diagram to render. Instead, the placeholder text
+        "🍺 Maischt…" stayed forever.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. If possible, paste a minimal Markdown sample.
+      placeholder: |
+        1. `npm run tauri:dev`
+        2. Click "Sudhaus auswählen", pick `test-docs/`
+        3. Click `system-model.md` in the tree
+        4. Diagram never renders
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / console output
+      description: Open DevTools (Ctrl+Shift+I in dev mode) → Console tab. Paste anything red.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, configs, related issues, hunches.

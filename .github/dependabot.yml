@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Frontend dependencies (Angular, marked, mermaid, @tauri-apps/*)
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - frontend
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      angular:
+        patterns:
+          - "@angular/*"
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+
+  # Rust dependencies (tauri core + plugins, notify, serde, …)
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - rust
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      tauri:
+        patterns:
+          - "tauri*"
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+      time: "06:00"
+      timezone: Europe/Berlin
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ci

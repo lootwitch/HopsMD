@@ -1,0 +1,51 @@
+name: 🍻 Feature Request
+description: Suggest a new feature — a new diagram type, a UI improvement, a workflow that doesn't exist yet.
+title: "[feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Before opening:
+        - search [existing issues](https://github.com/CloudBrew/HopsMD/issues?q=is%3Aissue) — a similar wish may already be tracked
+        - keep in mind HopsMD is intentionally minimal (read-only viewer for local Markdown).
+          Anything that turns it into an editor or sync service is unlikely to land.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation, not the solution. "I want X" leads to better designs than "add a button that does Y".
+      placeholder: |
+        When I navigate to a deeply nested Markdown file and switch to a
+        sibling file, I lose track of where I am in the tree because the
+        parent folders are still all collapsed at the top.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution (optional)
+      description: How would you like it to work? Mockup, pseudo-API, or just a sentence.
+      placeholder: |
+        Auto-expand the path from root to the currently-selected file in
+        the sidebar.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds have you tried? What else could solve this?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Rough scope
+      options:
+        - "Cosmetic — colour, spacing, copy"
+        - "Small — single component / one command"
+        - "Medium — new service, new IPC command, or several files"
+        - "Large — cross-cutting / new dependency / new architectural piece"
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔐 Security finding
+    url: https://github.com/CloudBrew/HopsMD/security/advisories/new
+    about: Please report vulnerabilities privately via GitHub Security Advisories, not as a public issue. See SECURITY.md for scope.
+  - name: 📦 Tauri / Angular upstream bug
+    url: https://github.com/tauri-apps/tauri/issues
+    about: If the bug is clearly in the Tauri runtime, please report it there. The HopsMD repo only tracks issues in HopsMD itself.
