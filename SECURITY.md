@@ -15,7 +15,7 @@ Please **do not** open a public issue for security findings.
 
 Use GitHub's private vulnerability reporting:
 
-1. Go to <https://github.com/CloudBrew/HopsMD/security/advisories/new>
+1. Go to <https://github.com/lootwitch/HopsMD/security/advisories/new>
 2. Fill in what you observed, how to reproduce, and the impact you see
 3. Submit — the report is visible only to repo maintainers
 

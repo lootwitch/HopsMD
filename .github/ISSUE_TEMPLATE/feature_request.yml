@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Thanks for the idea. Before opening:
-        - search [existing issues](https://github.com/CloudBrew/HopsMD/issues?q=is%3Aissue) — a similar wish may already be tracked
+        - search [existing issues](https://github.com/lootwitch/HopsMD/issues?q=is%3Aissue) — a similar wish may already be tracked
         - keep in mind HopsMD is intentionally minimal (read-only viewer for local Markdown).
           Anything that turns it into an editor or sync service is unlikely to land.
 

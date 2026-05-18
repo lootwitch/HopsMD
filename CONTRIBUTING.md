@@ -13,7 +13,7 @@ Prerequisites:
   bootstrapper installs it on Windows 10)
 
 ```bash
-git clone https://github.com/CloudBrew/HopsMD.git
+git clone https://github.com/lootwitch/HopsMD.git
 cd HopsMD
 npm install
 npm run tauri:dev
@@ -80,7 +80,7 @@ There is no automated test suite yet — that's on the roadmap.
 
 ## Reporting bugs / requesting features
 
-Use the [issue templates](https://github.com/CloudBrew/HopsMD/issues/new/choose).
+Use the [issue templates](https://github.com/lootwitch/HopsMD/issues/new/choose).
 Security findings: see [SECURITY.md](./SECURITY.md).
 
 ## Code of Conduct

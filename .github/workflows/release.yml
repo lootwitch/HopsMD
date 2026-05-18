@@ -80,8 +80,11 @@ jobs:
             > — the installer is unsigned during the MVP phase. SignPath.io OSS
             > signing is on the roadmap.
 
-            See [CHANGELOG.md](https://github.com/CloudBrew/HopsMD/blob/main/CHANGELOG.md) for what's new.
+            See [CHANGELOG.md](https://github.com/lootwitch/HopsMD/blob/main/CHANGELOG.md) for what's new.
           releaseDraft: true
           prerelease: false
-          includeUpdaterJson: true
+          # Flip to `true` once the `updater` feature is enabled and the
+          # TAURI_SIGNING_* secrets are populated — the latest.json
+          # generation otherwise has nothing to sign.
+          includeUpdaterJson: false
           args: --target x86_64-pc-windows-msvc

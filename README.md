@@ -2,8 +2,8 @@
 
 > _Brewing Markdown, one document at a time._
 
-[![Release](https://img.shields.io/github/v/release/CloudBrew/HopsMD?display_name=tag&sort=semver)](https://github.com/CloudBrew/HopsMD/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/CloudBrew/HopsMD/release.yml?label=build)](https://github.com/CloudBrew/HopsMD/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/v/release/lootwitch/HopsMD?display_name=tag&sort=semver)](https://github.com/lootwitch/HopsMD/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/lootwitch/HopsMD/release.yml?label=build)](https://github.com/lootwitch/HopsMD/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f5c542.svg)](./LICENSE)
 [![Made with Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
 [![Made with Angular](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)](https://angular.dev)
@@ -34,7 +34,7 @@ winget install CloudBrew.HopsMD
 
 ### Manual download
 
-Grab the installer from [the latest GitHub Release](https://github.com/CloudBrew/HopsMD/releases/latest):
+Grab the installer from [the latest GitHub Release](https://github.com/lootwitch/HopsMD/releases/latest):
 
 - `HopsMD_<version>_x64-setup.exe` — NSIS, smaller, per-machine
 - `HopsMD_<version>_x64_en-US.msi` — MSI, group-policy friendly
@@ -126,7 +126,7 @@ still searchable.
 Bug reports, fixes, and ideas welcome. See [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 for the build/test/PR workflow and [`docs/RELEASE.md`](./docs/RELEASE.md) for
 the release runbook. Security findings go through
-[GitHub Security Advisories](https://github.com/CloudBrew/HopsMD/security/advisories/new)
+[GitHub Security Advisories](https://github.com/lootwitch/HopsMD/security/advisories/new)
 (see [`SECURITY.md`](./SECURITY.md)).
 
 Changes are tracked in [`CHANGELOG.md`](./CHANGELOG.md) following

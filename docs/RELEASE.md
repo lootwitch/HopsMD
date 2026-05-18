@@ -36,15 +36,15 @@ That fires `.github/workflows/release.yml` → builds MSI + NSIS → creates a
 
 ### 1. Push to GitHub
 
-The release pipeline assumes the repo lives at `github.com/CloudBrew/HopsMD`
+The release pipeline assumes the repo lives at `github.com/lootwitch/HopsMD`
 (referenced in `tauri.conf.json` and the winget manifests). Adjust if the
 final URL differs.
 
 ```bash
-gh repo create CloudBrew/HopsMD --source . --private --push
+gh repo create lootwitch/HopsMD --source . --private --push
 ```
 
-(Or the org of your choice — search-and-replace `CloudBrew/HopsMD` first.)
+(Or the org of your choice — search-and-replace `lootwitch/HopsMD` first.)
 
 ### 2. Generate the updater keypair (only if you want in-app updates)
 
@@ -105,14 +105,14 @@ cd winget-pkgs
 git checkout -b cloudbrew-hopsmd-0.1.0
 
 # Copy our templates into the correct path (lowercase first-letter folder!)
-mkdir -p manifests/c/CloudBrew/HopsMD/0.1.0
-cp ../HopsMD/winget/*.yaml manifests/c/CloudBrew/HopsMD/0.1.0/
+mkdir -p manifests/c/lootwitch/HopsMD/0.1.0
+cp ../HopsMD/winget/*.yaml manifests/c/lootwitch/HopsMD/0.1.0/
 
 # Edit the two SHA256 placeholders in installer.yaml with the real hashes
 # Validate locally:
-winget validate --manifest manifests/c/CloudBrew/HopsMD/0.1.0/
+winget validate --manifest manifests/c/lootwitch/HopsMD/0.1.0/
 
-git add manifests/c/CloudBrew/HopsMD/0.1.0/
+git add manifests/c/lootwitch/HopsMD/0.1.0/
 git commit -m "New version: CloudBrew.HopsMD version 0.1.0"
 git push origin cloudbrew-hopsmd-0.1.0
 gh pr create --repo microsoft/winget-pkgs --fill

@@ -35,7 +35,7 @@
     "active": true,
     "targets": ["nsis", "msi"],
     "publisher": "CloudBrew",
-    "homepage": "https://github.com/CloudBrew/HopsMD",
+    "homepage": "https://github.com/lootwitch/HopsMD",
     "copyright": "© 2026 Ludwig Biermann (CloudBrew)",
     "icon": [
       "icons/32x32.png",
@@ -67,7 +67,7 @@
     "updater": {
       "active": false,
       "endpoints": [
-        "https://github.com/CloudBrew/HopsMD/releases/latest/download/latest.json"
+        "https://github.com/lootwitch/HopsMD/releases/latest/download/latest.json"
       ],
       "dialog": false,
       "pubkey": "REPLACE_AFTER_RUNNING_npx_tauri_signer_generate"

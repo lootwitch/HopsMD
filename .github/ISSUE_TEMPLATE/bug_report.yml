@@ -7,9 +7,9 @@ body:
     attributes:
       value: |
         Thanks for taking the time to file a bug. Before opening:
-        - check the [existing issues](https://github.com/CloudBrew/HopsMD/issues?q=is%3Aissue) to avoid duplicates
+        - check the [existing issues](https://github.com/lootwitch/HopsMD/issues?q=is%3Aissue) to avoid duplicates
         - if it's a security finding, please use the
-          [private advisory flow](https://github.com/CloudBrew/HopsMD/security/advisories/new) instead
+          [private advisory flow](https://github.com/lootwitch/HopsMD/security/advisories/new) instead
 
   - type: input
     id: version

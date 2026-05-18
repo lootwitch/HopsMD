@@ -41,4 +41,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `effect + queueMicrotask` to `afterRenderEffect` for reliable DOM
   timing.
 
-[Unreleased]: https://github.com/CloudBrew/HopsMD/commits/main
+[Unreleased]: https://github.com/lootwitch/HopsMD/commits/main
