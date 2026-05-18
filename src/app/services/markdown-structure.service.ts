@@ -91,16 +91,23 @@ export class MarkdownStructureService {
   /** Load a specific markdown file's contents. Path must come from the tree. */
   async selectRecipe(node: RecipeNode): Promise<void> {
     if (node.isDir) return;
+    await this.openFileByPath(node.path);
+  }
+
+  /**
+   * Open an arbitrary markdown file by absolute path — used for cross-file
+   * links inside the viewer, where the target isn't necessarily the node
+   * the user just clicked in the tree. Same backend round-trip as
+   * `selectRecipe`: tap_recipe + watch_recipe.
+   */
+  async openFileByPath(path: string): Promise<void> {
     this._loading.set(true);
     this._error.set(null);
-    this._selectedPath.set(node.path);
+    this._selectedPath.set(path);
     try {
-      await this.tap(node.path);
-      // Start (or replace) the filesystem watch for live reload. Failures
-      // here shouldn't abort the read — surface as error banner but keep the
-      // file open in read-only mode.
+      await this.tap(path);
       try {
-        await invokeBridge<void>('watch_recipe', { path: node.path });
+        await invokeBridge<void>('watch_recipe', { path });
       } catch (err) {
         this._error.set(`Watcher konnte nicht starten: ${this.describe(err)}`);
       }

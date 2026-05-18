@@ -11,7 +11,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { openPathBridge } from '../../core/tauri-bridge';
+import { dirname, resolveRelative } from '../../core/path-utils';
+import { openPathBridge, openUrlBridge } from '../../core/tauri-bridge';
 import type { TocItem } from '../../models/toc-item.model';
 import { I18nService } from '../../services/i18n.service';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
@@ -206,6 +207,10 @@ export class MarkdownViewComponent {
     typeof localStorage !== 'undefined' && localStorage.getItem(TOC_COLLAPSE_KEY) === '1',
   );
 
+  /** Anchor to scroll to once the next document has finished rendering — set
+   *  by handleLinkClick when the user follows a `./other.md#section` link. */
+  private pendingAnchor: string | null = null;
+
   /** Ticks every few seconds so the relative-time label refreshes itself. */
   private readonly nowTick = signal<number>(Date.now());
 
@@ -269,7 +274,16 @@ export class MarkdownViewComponent {
       }
       const host = this.host()?.nativeElement ?? null;
       void this.mermaid.renderAll(host);
-      if (host) this.toc.set(this.extractToc(host));
+      if (host) {
+        this.toc.set(this.extractToc(host));
+        // If we arrived via a cross-file link with `#anchor`, scroll once
+        // the new content has been parsed + the heading IDs assigned.
+        if (this.pendingAnchor) {
+          const anchor = this.pendingAnchor;
+          this.pendingAnchor = null;
+          this.scrollToHeading(anchor);
+        }
+      }
     });
 
     // Drive the relative-time label.
@@ -288,6 +302,22 @@ export class MarkdownViewComponent {
    */
   protected onContentClick(event: Event): void {
     const target = event.target as HTMLElement | null;
+
+    // Anchor inside the rendered markdown — cross-file link, in-page anchor,
+    // or external URL. Always preventDefault: the browser's native navigation
+    // would try to load the href inside the Tauri webview, which is wrong
+    // for every case here.
+    const link = target?.closest<HTMLAnchorElement>('a[href]');
+    if (link) {
+      const href = link.getAttribute('href');
+      if (href) {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.handleLinkClick(href);
+      }
+      return;
+    }
+
     const action = target?.closest<HTMLElement>('.hops-code-action');
     if (!action) return;
     const block = action.closest<HTMLElement>('.hops-code-block');
@@ -309,6 +339,71 @@ export class MarkdownViewComponent {
       case 'fullscreen':
         this.openFullscreen(block);
         break;
+    }
+  }
+
+  /**
+   * Resolve and act on an anchor href from the rendered markdown. Four cases:
+   *   `#anchor`       → scroll within the current file
+   *   http(s)/mail/tel → open externally via the system handler
+   *   ./other.md#x    → resolve relative to the current file's directory,
+   *                     load that file via state.openFileByPath, then scroll
+   *                     to `x` after the next render
+   *   ./photo.png     → non-markdown path, hand off to the OS-default app
+   */
+  private async handleLinkClick(rawHref: string): Promise<void> {
+    if (!rawHref) return;
+
+    // In-page anchor.
+    if (rawHref.startsWith('#')) {
+      this.scrollToHeading(decodeURIComponent(rawHref.slice(1)));
+      return;
+    }
+
+    // External URL (http(s) / mailto / tel) — defer to the system.
+    if (/^(https?|mailto|tel):/i.test(rawHref)) {
+      try {
+        await openUrlBridge(rawHref);
+      } catch (err) {
+        this.state.showError(
+          this.i18n.t('error.actionFailed', {
+            detail: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      return;
+    }
+
+    // Anything else is treated as a filesystem path. Without an open file we
+    // have no anchor for relative resolution, so bail out quietly.
+    const currentPath = this.state.selectedPath();
+    if (!currentPath) return;
+
+    const [pathPart, anchor] = rawHref.split('#');
+    if (!pathPart) {
+      // Edge case: just '#' or '#?' with no anchor.
+      if (anchor) this.scrollToHeading(decodeURIComponent(anchor));
+      return;
+    }
+    const decodedPath = decodeURIComponent(pathPart);
+    const resolved = resolveRelative(dirname(currentPath), decodedPath);
+
+    const isMarkdown = /\.(md|markdown|mdx)$/i.test(decodedPath);
+    if (isMarkdown) {
+      if (anchor) this.pendingAnchor = decodeURIComponent(anchor);
+      await this.state.openFileByPath(resolved);
+      return;
+    }
+
+    // Non-markdown — let the OS pick the right app.
+    try {
+      await openPathBridge(resolved);
+    } catch (err) {
+      this.state.showError(
+        this.i18n.t('error.actionFailed', {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
   }
 

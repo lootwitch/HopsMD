@@ -70,6 +70,20 @@ export async function revealInExplorer(path: string): Promise<void> {
 }
 
 /**
+ * Open an external URL (http/https/mailto/tel) with the system's default
+ * handler. Used for markdown anchor links that point outside the workspace.
+ */
+export async function openUrlBridge(url: string): Promise<void> {
+  if (!isTauri()) {
+    // Fall back to a normal window.open so the dev workflow still works.
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  const { openUrl } = await import('@tauri-apps/plugin-opener');
+  await openUrl(url);
+}
+
+/**
  * Subscribe to a Tauri event. In browser-only mode this resolves to a no-op
  * unsubscribe so callers don't need to special-case the dev workflow.
  */
