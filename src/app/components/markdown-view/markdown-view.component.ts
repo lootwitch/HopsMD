@@ -13,34 +13,16 @@ import {
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { openPathBridge } from '../../core/tauri-bridge';
 import type { TocItem } from '../../models/toc-item.model';
+import { I18nService } from '../../services/i18n.service';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
 import { TocComponent } from '../toc/toc.component';
 
-/** How often the "Aktualisiert vor X" label re-evaluates. 5 s is fine-grained
+/** How often the "Updated X ago" label re-evaluates. 5 s is fine-grained
  *  enough that the user notices it ticking, cheap enough to ignore. */
 const RELATIVE_TIME_TICK_MS = 5_000;
-
-/** Format an mtime as a German relative label, given a "now" reference. */
-function formatRelative(mtime: number, now: number): string {
-  const deltaSec = Math.max(0, Math.floor((now - mtime) / 1000));
-  if (deltaSec < 5) return 'gerade aktualisiert';
-  if (deltaSec < 60) return `vor ${deltaSec} Sek.`;
-  const min = Math.floor(deltaSec / 60);
-  if (min < 60) return `vor ${min} Min.`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `vor ${hr} Std.`;
-  const days = Math.floor(hr / 24);
-  if (days < 7) return `vor ${days} Tag${days === 1 ? '' : 'en'}`;
-  return new Date(mtime).toLocaleDateString('de-DE');
-}
-
-/** Absolute timestamp shown as the title= tooltip of the relative label. */
-function formatAbsolute(mtime: number): string {
-  return new Date(mtime).toLocaleString('de-DE');
-}
 
 /**
  * Renders the currently selected markdown file.
@@ -62,7 +44,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
   template: `
     @if (state.error(); as err) {
       <section class="banner banner-error">
-        <strong>Verschüttet:</strong> {{ err }}
+        <strong>{{ i18n.t('view.errorPrefix') }}</strong> {{ err }}
       </section>
     }
 
@@ -73,7 +55,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         @if (modifiedLabel(); as label) {
           <span class="filebar-sep">·</span>
           <span class="filebar-modified" [title]="modifiedAbsolute()">
-            Aktualisiert {{ label }}
+            {{ i18n.t('view.modifiedPrefix') }} {{ label }}
           </span>
         }
       </header>
@@ -82,17 +64,17 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
     @if (!state.selectedPath() && state.isOpen()) {
       <div class="empty">
         <div class="empty-icon">📜</div>
-        <h2>Frisch gezapft wartet ein Rezept.</h2>
-        <p>Wähle links im <strong>Rezeptbuch</strong> ein Markdown-Dokument, um es zu lesen.</p>
+        <h2>{{ i18n.t('view.pickRecipeTitle') }}</h2>
+        <p [innerHTML]="i18n.t('view.pickRecipeBody')"></p>
       </div>
     }
 
     @if (!state.isOpen() && !state.error()) {
       <div class="empty">
         <div class="empty-icon">🛢️</div>
-        <h2>Willkommen im Schankraum.</h2>
-        <p>Öffne oben rechts ein <strong>Sudhaus</strong> — also einen Ordner mit Markdown-Dateien — um zu starten.</p>
-        <p class="hint">Tipp: HopsMD versteht GitHub-Markdown und live gerenderte Mermaid-Diagramme.</p>
+        <h2>{{ i18n.t('view.welcomeTitle') }}</h2>
+        <p [innerHTML]="i18n.t('view.welcomeBody')"></p>
+        <p class="hint">{{ i18n.t('view.welcomeHint') }}</p>
       </div>
     }
 
@@ -200,6 +182,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 })
 export class MarkdownViewComponent {
   protected readonly state = inject(MarkdownStructureService);
+  protected readonly i18n = inject(I18nService);
   private readonly parser = inject(MarkdownParserService);
   private readonly mermaid = inject(MermaidRenderService);
   private readonly fullscreen = inject(MermaidFullscreenService);
@@ -229,19 +212,42 @@ export class MarkdownViewComponent {
   protected readonly modifiedLabel = computed<string | null>(() => {
     const mtime = this.state.lastModified();
     if (mtime === null) return null;
-    return formatRelative(mtime, this.nowTick());
+    return this.formatRelative(mtime, this.nowTick());
   });
 
   protected readonly modifiedAbsolute = computed<string>(() => {
     const mtime = this.state.lastModified();
-    return mtime === null ? '' : formatAbsolute(mtime);
+    return mtime === null
+      ? ''
+      : new Date(mtime).toLocaleString(this.i18n.intlLocale());
   });
 
+  private formatRelative(mtime: number, now: number): string {
+    const deltaSec = Math.max(0, Math.floor((now - mtime) / 1000));
+    if (deltaSec < 5) return this.i18n.t('time.justNow');
+    if (deltaSec < 60) return this.i18n.t('time.secondsAgo', { n: deltaSec });
+    const min = Math.floor(deltaSec / 60);
+    if (min < 60) return this.i18n.t('time.minutesAgo', { n: min });
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return this.i18n.t('time.hoursAgo', { n: hr });
+    const days = Math.floor(hr / 24);
+    if (days < 7) {
+      return days === 1
+        ? this.i18n.t('time.dayAgo')
+        : this.i18n.t('time.daysAgo', { n: days });
+    }
+    return new Date(mtime).toLocaleDateString(this.i18n.intlLocale());
+  }
+
   constructor() {
-    // Re-parse whenever the selected content (or its path) changes.
+    // Re-parse whenever the selected content, its path, OR the active locale
+    // changes — the parser injects translated tooltips and a "Mashing…"
+    // placeholder into the rendered HTML, so the language flip needs a fresh
+    // pass through marked + DOMPurify for those strings to refresh.
     effect(() => {
       const content = this.state.selectedContent();
       const path = this.state.selectedPath();
+      this.i18n.locale(); // tracked dependency, used inside parser
       if (!content) {
         this.html.set(null);
         return;
@@ -367,7 +373,7 @@ export class MarkdownViewComponent {
       .renderToSvg(source)
       .then((svg) => {
         if (svg) this.fullscreen.open(svg);
-        else this.state.showError('Diagramm konnte für Vollbild nicht erneut gerendert werden.');
+        else this.state.showError(this.i18n.t('error.diagramRerenderFailed'));
       });
   }
 
@@ -414,14 +420,16 @@ export class MarkdownViewComponent {
   private async openInEditor(): Promise<void> {
     const path = this.state.selectedPath();
     if (!path) {
-      this.state.showError('Kein Dokument geöffnet — nichts zum Editieren.');
+      this.state.showError(this.i18n.t('error.noDocOpen'));
       return;
     }
     try {
       await openPathBridge(path);
     } catch (err) {
       this.state.showError(
-        `Editor konnte nicht geöffnet werden: ${err instanceof Error ? err.message : String(err)}`,
+        this.i18n.t('error.openEditorFailed', {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
   }

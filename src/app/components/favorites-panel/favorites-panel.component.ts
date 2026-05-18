@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { basename } from '../../core/path-utils';
 import { FavoritesService } from '../../services/favorites.service';
+import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 
 /**
@@ -35,7 +36,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
     <section class="panel">
       <header class="panel-header">
         <span>🌾</span>
-        <span>Sudhause</span>
+        <span>{{ i18n.t('favorites.title') }}</span>
         @if (favorites.count(); as n) {
           <span class="panel-count">{{ n }}</span>
         }
@@ -50,7 +51,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
               [class.active]="fav.path === state.brewhouse()"
               [class.editing]="editingPath() === fav.path"
               (click)="open(fav.path)"
-              [title]="fav.path + '\n(Doppelklick auf den Namen zum Umbenennen)'"
+              [title]="fav.path + i18n.t('favorites.entryTitleSuffix')"
             >
               <span class="fav-icon" aria-hidden="true">📍</span>
               @if (editingPath() === fav.path) {
@@ -64,7 +65,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
                   (keydown.enter)="commitRename($event)"
                   (keydown.escape)="cancelRename($event)"
                   (blur)="commitRename()"
-                  aria-label="Sudhaus umbenennen"
+                  [attr.aria-label]="i18n.t('favorites.unpinTooltip')"
                   spellcheck="false"
                 />
               } @else {
@@ -77,7 +78,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
                 class="fav-unpin"
                 role="button"
                 tabindex="0"
-                title="Vom Stammsudhaus-Pin lösen"
+                [title]="i18n.t('favorites.unpinTooltip')"
                 (click)="unpin(fav.path, $event)"
                 (keydown.enter)="unpin(fav.path, $event)"
                 (keydown.space)="unpin(fav.path, $event)"
@@ -101,10 +102,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
         }
 
         @if (favorites.count() === 0 && !canPinCurrent()) {
-          <li class="empty">
-            Noch keine Stammsudhause angepinnt. Öffne oben rechts ein Sudhaus,
-            dann erscheint hier ein „＋ Anstecken“-Button.
-          </li>
+          <li class="empty">{{ i18n.t('favorites.empty') }}</li>
         }
       </ul>
     </section>
@@ -245,6 +243,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
 export class FavoritesPanelComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly favorites = inject(FavoritesService);
+  protected readonly i18n = inject(I18nService);
 
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
   protected readonly editingPath = signal<string | null>(null);
@@ -257,7 +256,9 @@ export class FavoritesPanelComponent {
 
   protected readonly pinCurrentLabel = computed(() => {
     const current = this.state.brewhouse();
-    return current ? `Anstecken: ${basename(current)}` : 'Anstecken';
+    return current
+      ? this.i18n.t('favorites.pinCurrent', { name: basename(current) })
+      : this.i18n.t('favorites.pinCurrentEmpty');
   });
 
   constructor() {

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { openPathBridge, revealInExplorer } from '../../core/tauri-bridge';
 import { ContextMenuService } from '../../services/context-menu.service';
+import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 
 /**
@@ -45,16 +46,16 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
         @if (menu.node.isDir) {
           <button type="button" class="ctx-item" (click)="openFolder()" role="menuitem">
             <span class="ctx-item-icon">🔍</span>
-            Ordner im Explorer öffnen
+            {{ i18n.t('ctx.openFolder') }}
           </button>
         } @else {
           <button type="button" class="ctx-item" (click)="revealFile()" role="menuitem">
             <span class="ctx-item-icon">🔍</span>
-            Im Explorer anzeigen
+            {{ i18n.t('ctx.revealFile') }}
           </button>
           <button type="button" class="ctx-item" (click)="openFile()" role="menuitem">
             <span class="ctx-item-icon">✏️</span>
-            Mit Standard-Editor öffnen
+            {{ i18n.t('ctx.openInEditor') }}
           </button>
         }
       </div>
@@ -118,6 +119,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
 })
 export class ContextMenuComponent {
   protected readonly ctx = inject(ContextMenuService);
+  protected readonly i18n = inject(I18nService);
   private readonly state = inject(MarkdownStructureService);
   private readonly menuEl = viewChild<ElementRef<HTMLElement>>('menuEl');
 
@@ -184,7 +186,9 @@ export class ContextMenuComponent {
       await fn();
     } catch (err) {
       this.state.showError(
-        `Aktion fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+        this.i18n.t('error.actionFailed', {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
   }

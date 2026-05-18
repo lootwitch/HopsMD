@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import DOMPurify from 'dompurify';
 import { Marked, type Tokens } from 'marked';
 import { dirname, resolveRelative } from '../core/path-utils';
 import { toAssetUrl } from '../core/tauri-bridge';
+import { I18nService } from './i18n.service';
 
 /** Outer wrapper around every fenced code block (mermaid + plain text). */
 export const CODE_BLOCK_CLASS = 'hops-code-block';
@@ -53,6 +54,7 @@ const ICON_FULLSCREEN = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hi
  */
 @Injectable({ providedIn: 'root' })
 export class MarkdownParserService {
+  private readonly i18n = inject(I18nService);
   private readonly marked = new Marked({
     gfm: true,
     breaks: false,
@@ -107,16 +109,16 @@ export class MarkdownParserService {
     const langLabel = lang ? `<span class="hops-code-lang">${escapeHtml(lang)}</span>` : '';
 
     const toggleBtn = isMermaid
-      ? `<button class="hops-code-action" type="button" data-action="toggle" title="Quelltext zeigen / Renderer">${ICON_TOGGLE}</button>`
+      ? `<button class="hops-code-action" type="button" data-action="toggle" title="${escapeHtml(this.i18n.t('code.toggleSource'))}">${ICON_TOGGLE}</button>`
       : '';
     const fullscreenBtn = isMermaid
-      ? `<button class="hops-code-action" type="button" data-action="fullscreen" title="Diagramm vergrößern">${ICON_FULLSCREEN}</button>`
+      ? `<button class="hops-code-action" type="button" data-action="fullscreen" title="${escapeHtml(this.i18n.t('code.fullscreen'))}">${ICON_FULLSCREEN}</button>`
       : '';
-    const copyBtn = `<button class="hops-code-action" type="button" data-action="copy" title="Kopieren">${ICON_COPY}</button>`;
-    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="Datei im Standard-Editor öffnen">${ICON_EDITOR}</button>`;
+    const copyBtn = `<button class="hops-code-action" type="button" data-action="copy" title="${escapeHtml(this.i18n.t('code.copy'))}">${ICON_COPY}</button>`;
+    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="${escapeHtml(this.i18n.t('code.openInEditor'))}">${ICON_EDITOR}</button>`;
 
     const renderedSlot = isMermaid
-      ? `<div class="${CODE_BLOCK_RENDERED_CLASS}"><span class="hops-pending">🍺 Maischt…</span></div>`
+      ? `<div class="${CODE_BLOCK_RENDERED_CLASS}"><span class="hops-pending">${escapeHtml(this.i18n.t('code.mermaidPending'))}</span></div>`
       : '';
 
     return (

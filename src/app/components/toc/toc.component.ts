@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  inject,
   input,
   output,
 } from '@angular/core';
 import type { TocItem } from '../../models/toc-item.model';
+import { I18nService } from '../../services/i18n.service';
 
 /**
  * Sticky table of contents shown at the top-right of the markdown view.
@@ -23,7 +25,7 @@ import type { TocItem } from '../../models/toc-item.model';
           type="button"
           class="toc-toggle"
           (click)="onToggle()"
-          [title]="collapsed() ? 'Gliederung anzeigen' : 'Gliederung einklappen'"
+          [title]="collapsed() ? i18n.t('toc.show') : i18n.t('toc.hide')"
           [attr.aria-expanded]="!collapsed()"
         >
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -36,14 +38,14 @@ import type { TocItem } from '../../models/toc-item.model';
             />
           </svg>
           @if (!collapsed()) {
-            <span class="toc-title">Gliederung</span>
+            <span class="toc-title">{{ i18n.t('toc.title') }}</span>
             <span class="toc-count">{{ items().length }}</span>
           }
         </button>
       </header>
 
       @if (!collapsed()) {
-        <nav class="toc-nav" aria-label="Inhaltsverzeichnis">
+        <nav class="toc-nav" [attr.aria-label]="i18n.t('toc.ariaLabel')">
           <ul>
             @for (item of items(); track item.id) {
               <li
@@ -182,6 +184,8 @@ import type { TocItem } from '../../models/toc-item.model';
   ],
 })
 export class TocComponent {
+  protected readonly i18n = inject(I18nService);
+
   readonly items = input.required<readonly TocItem[]>();
   readonly collapsed = input<boolean>(false);
 

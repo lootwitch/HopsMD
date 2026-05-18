@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { I18nService } from './i18n.service';
 import { CODE_BLOCK_CLASS, CODE_BLOCK_RENDERED_CLASS } from './markdown-parser.service';
 
 /** Decode base64 → UTF-8 string. */
@@ -37,6 +38,7 @@ function escapeHtml(s: string): string {
  */
 @Injectable({ providedIn: 'root' })
 export class MermaidRenderService {
+  private readonly i18n = inject(I18nService);
   private mermaidPromise: Promise<typeof import('mermaid').default> | null = null;
   private counter = 0;
 
@@ -98,7 +100,9 @@ export class MermaidRenderService {
       mermaid = await this.getMermaid();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      blocks.forEach((block) => this.markSpoiled(block, `Mermaid konnte nicht geladen werden: ${message}`));
+      blocks.forEach((block) =>
+        this.markSpoiled(block, this.i18n.t('mermaid.couldntLoad', { detail: message })),
+      );
       return;
     }
 
@@ -120,7 +124,10 @@ export class MermaidRenderService {
     try {
       source = decodeMermaid(payload);
     } catch (err) {
-      this.markSpoiled(block, `Konnte Diagramm-Quelltext nicht dekodieren: ${err}`);
+      this.markSpoiled(
+        block,
+        this.i18n.t('mermaid.couldntDecode', { detail: String(err) }),
+      );
       return;
     }
 
@@ -137,9 +144,10 @@ export class MermaidRenderService {
 
   private markSpoiled(block: HTMLElement, message: string, source?: string): void {
     const target = block.querySelector<HTMLElement>(`.${CODE_BLOCK_RENDERED_CLASS}`);
+    const prefix = this.i18n.t('mermaid.errorPrefix');
     const body = source
-      ? `Trübung im Diagramm:\n\n${message}\n\n--- source ---\n${source}`
-      : `Trübung im Diagramm:\n\n${message}`;
+      ? `${prefix}\n\n${message}\n\n${this.i18n.t('mermaid.sourceSeparator')}\n${source}`
+      : `${prefix}\n\n${message}`;
     if (target) {
       target.innerHTML = `<pre class="hops-mermaid-error">${escapeHtml(body)}</pre>`;
     }

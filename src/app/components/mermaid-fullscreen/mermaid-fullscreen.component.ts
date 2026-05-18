@@ -9,6 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { I18nService } from '../../services/i18n.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 
 /** Zoom clamps — too far out makes the diagram unreadable, too far in is silly. */
@@ -44,13 +45,13 @@ const KEY_STEP = 1.25;   // chunkier per key press
         (mousedown)="onBackdropMouseDown($event)"
       >
         <div class="toolbar" (mousedown)="$event.stopPropagation()">
-          <button type="button" (click)="zoomOut()" title="Verkleinern (−)">−</button>
-          <button type="button" class="scale" (click)="reset()" title="Anpassen (0)">
+          <button type="button" (click)="zoomOut()" [title]="i18n.t('fullscreen.zoomOut')">−</button>
+          <button type="button" class="scale" (click)="reset()" [title]="i18n.t('fullscreen.fit')">
             {{ scaleLabel() }}
           </button>
-          <button type="button" (click)="zoomIn()" title="Vergrößern (+)">+</button>
-          <span class="hint">Mausrad / Drag · +/− · 0 · Esc</span>
-          <button type="button" class="close" (click)="close()" title="Schließen (Esc)">✕</button>
+          <button type="button" (click)="zoomIn()" [title]="i18n.t('fullscreen.zoomIn')">+</button>
+          <span class="hint">{{ i18n.t('fullscreen.hint') }}</span>
+          <button type="button" class="close" (click)="close()" [title]="i18n.t('fullscreen.close')">✕</button>
         </div>
 
         <div
@@ -142,6 +143,7 @@ const KEY_STEP = 1.25;   // chunkier per key press
 })
 export class MermaidFullscreenComponent {
   protected readonly service = inject(MermaidFullscreenService);
+  protected readonly i18n = inject(I18nService);
 
   private readonly host = viewChild<ElementRef<HTMLElement>>('host');
   private readonly content = viewChild<ElementRef<HTMLElement>>('content');

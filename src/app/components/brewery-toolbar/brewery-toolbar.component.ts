@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { UpdaterService } from '../../services/updater.service';
 
@@ -8,25 +9,25 @@ import { UpdaterService } from '../../services/updater.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="toolbar">
-      <div class="brand" title="HopsMD — a CloudBrew side project">
+      <div class="brand" [title]="i18n.t('toolbar.brandTitle')">
         <span class="brand-icon">🍺</span>
         <div class="brand-text">
           <strong>HopsMD</strong>
-          <small>brewing Markdown · CloudBrew</small>
+          <small>{{ i18n.t('toolbar.brandTagline') }}</small>
         </div>
       </div>
 
       <div class="status">
         @if (state.selectedPath(); as path) {
-          <span class="status-label">Datei:</span>
+          <span class="status-label">{{ i18n.t('toolbar.fileLabel') }}</span>
           <span class="status-path" [title]="path">{{ path }}</span>
         } @else if (state.isOpen()) {
-          <span class="status-empty">Keine Datei geöffnet — wähle links ein Rezept aus.</span>
+          <span class="status-empty">{{ i18n.t('toolbar.noFileOpen') }}</span>
         } @else {
-          <span class="status-empty">Noch kein Sud im Kessel.</span>
+          <span class="status-empty">{{ i18n.t('toolbar.noSudhaus') }}</span>
         }
         @if (state.loading()) {
-          <span class="status-loading">· Maischen…</span>
+          <span class="status-loading">{{ i18n.t('toolbar.loading') }}</span>
         }
       </div>
 
@@ -37,26 +38,34 @@ import { UpdaterService } from '../../services/updater.service';
             class="btn update"
             (click)="onInstallUpdate()"
             [disabled]="updater.installing()"
-            [title]="updater.availableNotes() ?? 'Neue Version verfügbar'"
+            [title]="updater.availableNotes() ?? i18n.t('toolbar.updateTooltip')"
           >
             @if (updater.installing()) {
-              <span>Maischt das Update…</span>
+              <span>{{ i18n.t('toolbar.updateInstalling') }}</span>
             } @else {
-              <span>🍻 Neuer Sud {{ version }} — jetzt installieren</span>
+              <span>{{ i18n.t('toolbar.updateAvailable', { version: version }) }}</span>
             }
           </button>
         }
+        <button
+          type="button"
+          class="btn locale"
+          (click)="onToggleLocale()"
+          [title]="i18n.t('toolbar.toggleLocale')"
+        >
+          {{ i18n.localeLabel() }}
+        </button>
         <button type="button" class="btn primary" (click)="onOpen()" [disabled]="state.loading()">
-          Sudhaus auswählen
+          {{ i18n.t('toolbar.pickBrewhouse') }}
         </button>
         <button
           type="button"
           class="btn ghost"
           (click)="onRefresh()"
           [disabled]="!state.isOpen() || state.loading()"
-          title="Nachschlag — Verzeichnis neu einlesen"
+          [title]="i18n.t('toolbar.refreshTooltip')"
         >
-          Nachschlag
+          {{ i18n.t('toolbar.refresh') }}
         </button>
       </div>
     </header>
@@ -167,6 +176,20 @@ import { UpdaterService } from '../../services/updater.service';
         border-color: var(--hops-pilsner);
         color: var(--hops-foam);
       }
+      .btn.locale {
+        background: transparent;
+        color: var(--hops-text-dim);
+        border-color: var(--hops-border);
+        font-family: var(--hops-mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.5px;
+        min-width: 38px;
+        padding: 0.4rem 0.55rem;
+      }
+      .btn.locale:hover {
+        border-color: var(--hops-pilsner);
+        color: var(--hops-foam);
+      }
       .btn.update {
         background: var(--hops-leaf);
         color: var(--hops-stout);
@@ -185,6 +208,7 @@ import { UpdaterService } from '../../services/updater.service';
 export class BreweryToolbarComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly updater = inject(UpdaterService);
+  protected readonly i18n = inject(I18nService);
 
   protected onOpen(): void {
     void this.state.openBrewhouse();
@@ -196,5 +220,9 @@ export class BreweryToolbarComponent {
 
   protected onInstallUpdate(): void {
     void this.updater.install();
+  }
+
+  protected onToggleLocale(): void {
+    this.i18n.toggle();
   }
 }
