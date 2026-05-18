@@ -12,10 +12,12 @@ import {
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { openPathBridge } from '../../core/tauri-bridge';
+import type { TocItem } from '../../models/toc-item.model';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
+import { TocComponent } from '../toc/toc.component';
 
 /** How often the "Aktualisiert vor X" label re-evaluates. 5 s is fine-grained
  *  enough that the user notices it ticking, cheap enough to ignore. */
@@ -50,9 +52,12 @@ function formatAbsolute(mtime: number): string {
  * The filebar at the top shows the absolute path plus a live "Aktualisiert
  * vor X" badge tied to the FileWatcher event stream from Rust.
  */
+const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
+
 @Component({
   selector: 'hops-markdown-view',
   standalone: true,
+  imports: [TocComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state.error(); as err) {
@@ -91,13 +96,24 @@ function formatAbsolute(mtime: number): string {
       </div>
     }
 
-    <article
-      #host
-      class="hops-markdown"
-      [hidden]="!html()"
-      [innerHTML]="html()"
-      (click)="onContentClick($event)"
-    ></article>
+    <div class="view-grid" [hidden]="!html()">
+      <article
+        #host
+        class="hops-markdown"
+        [innerHTML]="html()"
+        (click)="onContentClick($event)"
+      ></article>
+      @if (toc().length > 0) {
+        <aside class="toc-pane">
+          <hops-toc
+            [items]="toc()"
+            [collapsed]="tocCollapsed()"
+            (itemSelected)="scrollToHeading($event)"
+            (collapseToggled)="onTocToggle()"
+          />
+        </aside>
+      }
+    </div>
   `,
   styles: [
     `
@@ -106,6 +122,17 @@ function formatAbsolute(mtime: number): string {
         height: 100%;
         overflow-y: auto;
         background: var(--hops-stout);
+      }
+      .view-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+      }
+      .toc-pane {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        z-index: 1;
       }
       .banner {
         margin: 0;
@@ -188,6 +215,14 @@ export class MarkdownViewComponent {
    */
   protected readonly html = signal<SafeHtml | null>(null);
 
+  /** Table of contents extracted from the post-render article DOM. */
+  protected readonly toc = signal<readonly TocItem[]>([]);
+
+  /** TOC collapse state, persisted across reloads. */
+  protected readonly tocCollapsed = signal<boolean>(
+    typeof localStorage !== 'undefined' && localStorage.getItem(TOC_COLLAPSE_KEY) === '1',
+  );
+
   /** Ticks every few seconds so the relative-time label refreshes itself. */
   private readonly nowTick = signal<number>(Date.now());
 
@@ -217,12 +252,18 @@ export class MarkdownViewComponent {
     });
 
     // After the HTML has been written into the DOM by [innerHTML], find any
-    // pending Mermaid placeholders and render them. afterRenderEffect fires
-    // *after* Angular has applied the binding, so the placeholders we just
-    // produced are guaranteed to be in the DOM.
+    // pending Mermaid placeholders and render them. Then scan for headings
+    // so the TOC reflects the freshly mounted content. afterRenderEffect
+    // fires *after* Angular has applied the binding, so the article is
+    // populated when this runs.
     afterRenderEffect(() => {
-      if (!this.html()) return;
-      void this.mermaid.renderAll(this.host()?.nativeElement ?? null);
+      if (!this.html()) {
+        this.toc.set([]);
+        return;
+      }
+      const host = this.host()?.nativeElement ?? null;
+      void this.mermaid.renderAll(host);
+      if (host) this.toc.set(this.extractToc(host));
     });
 
     // Drive the relative-time label.
@@ -263,6 +304,56 @@ export class MarkdownViewComponent {
         this.openFullscreen(block);
         break;
     }
+  }
+
+  /** Scroll the heading with `id` into the top of the article viewport.
+   *  `behavior: 'instant'` is intentional — `'smooth'` silently no-ops in
+   *  the Chromium webview configuration we ship with, and a rAF-based
+   *  animation depends on requestAnimationFrame firing, which is also
+   *  throttled in some webview lifecycles. The scroll-margin-top in
+   *  styles.scss keeps the heading from being flush against the viewport
+   *  edge. */
+  protected scrollToHeading(id: string): void {
+    const target = this.host()?.nativeElement.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+    target?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
+
+  protected onTocToggle(): void {
+    this.tocCollapsed.update((v) => !v);
+    try {
+      localStorage.setItem(TOC_COLLAPSE_KEY, this.tocCollapsed() ? '1' : '0');
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
+   * Walk the article DOM, assign de-duplicated slug IDs to every h1-h6 we
+   * find, and produce a flat TOC list. Indent depth is normalised to the
+   * shallowest heading present so a doc that starts at h2 doesn't appear
+   * to indent its top level.
+   */
+  private extractToc(host: HTMLElement): TocItem[] {
+    const headings = Array.from(
+      host.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6'),
+    );
+    if (headings.length === 0) return [];
+
+    const used = new Set<string>();
+    const raw: { id: string; text: string; level: number }[] = [];
+    for (const h of headings) {
+      const text = (h.textContent ?? '').trim();
+      if (!text) continue;
+      const id = uniqueSlug(slugify(text) || 'abschnitt', used);
+      h.id = id;
+      raw.push({ id, text, level: Number(h.tagName.charAt(1)) });
+    }
+    if (raw.length === 0) return [];
+    const minLevel = Math.min(...raw.map((r) => r.level));
+    return raw.map((r) => ({
+      ...r,
+      indent: Math.max(0, r.level - minLevel),
+    }));
   }
 
   private openFullscreen(block: HTMLElement): void {
@@ -334,6 +425,32 @@ export class MarkdownViewComponent {
       );
     }
   }
+}
+
+/** Lowercase + diacritic-strip + non-alphanumeric collapse to dashes. */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** Disambiguate `base` against `used` by appending -2, -3, … as needed. */
+function uniqueSlug(base: string, used: Set<string>): string {
+  if (!used.has(base)) {
+    used.add(base);
+    return base;
+  }
+  let n = 2;
+  while (used.has(`${base}-${n}`)) n++;
+  const id = `${base}-${n}`;
+  used.add(id);
+  return id;
 }
 
 /** Inverse of the parser's encodeBase64Utf8 helper — kept inline to avoid a

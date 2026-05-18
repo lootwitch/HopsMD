@@ -73,6 +73,8 @@ hops-root {
     margin-top: 1.6em;
     margin-bottom: 0.5em;
     line-height: 1.25;
+    /* Leaves a bit of breathing room when scrolled-into-view from TOC clicks. */
+    scroll-margin-top: 0.6rem;
   }
   h1 { font-size: 1.9rem; border-bottom: 1px solid var(--hops-border); padding-bottom: .3em; }
   h2 { font-size: 1.5rem; border-bottom: 1px solid var(--hops-border); padding-bottom: .25em; }
