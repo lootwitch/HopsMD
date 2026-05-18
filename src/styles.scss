@@ -103,6 +103,97 @@ hops-root {
     }
   }
 
+  /* ---- fenced code blocks (mermaid + plain) ---- */
+  .hops-code-block {
+    position: relative;
+    margin: 1rem 0;
+    background: var(--hops-stout-2);
+    border: 1px solid var(--hops-border);
+    border-radius: 6px;
+    overflow: hidden;
+
+    pre.hops-code-source {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .hops-code-rendered {
+      display: flex;
+      justify-content: center;
+      padding: 1rem;
+      min-height: 80px;
+
+      svg {
+        max-width: 100%;
+        height: auto;
+      }
+    }
+
+    /* view-state visibility */
+    &[data-view="rendered"] .hops-code-source { display: none; }
+    &[data-view="source"] .hops-code-rendered { display: none; }
+
+    /* error state */
+    &[data-state="spoiled"] .hops-code-rendered {
+      background: rgba(179, 64, 54, 0.06);
+      justify-content: flex-start;
+    }
+  }
+
+  .hops-code-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.55rem;
+    background: rgba(245, 197, 66, 0.04);
+    border-bottom: 1px solid var(--hops-border);
+    user-select: none;
+  }
+
+  .hops-code-lang {
+    margin-right: auto;
+    font-family: var(--hops-mono);
+    font-size: 0.72rem;
+    color: var(--hops-text-dim);
+    text-transform: lowercase;
+    letter-spacing: 0.5px;
+  }
+
+  .hops-code-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--hops-text-dim);
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  .hops-code-action:hover {
+    color: var(--hops-foam);
+    background: rgba(245, 197, 66, 0.1);
+    border-color: var(--hops-border);
+  }
+  .hops-code-action:active {
+    transform: scale(0.94);
+  }
+  .hops-code-action.copied {
+    color: var(--hops-leaf);
+    background: rgba(110, 168, 79, 0.15);
+  }
+
+  .hops-pending {
+    color: var(--hops-text-dim);
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+
   blockquote {
     border-left: 3px solid var(--hops-amber);
     margin-left: 0;
@@ -132,26 +223,6 @@ hops-root {
     border: 0;
     border-top: 1px solid var(--hops-border);
     margin: 2em 0;
-  }
-
-  /* Mermaid placeholders rendered by MermaidRenderService */
-  .hops-mermaid {
-    display: flex;
-    justify-content: center;
-    padding: 1rem;
-    margin: 1rem 0;
-    background: var(--hops-stout-2);
-    border: 1px solid var(--hops-border);
-    border-radius: 6px;
-    min-height: 80px;
-
-    svg { max-width: 100%; height: auto; }
-
-    &.spoiled {
-      background: rgba(179, 64, 54, 0.08);
-      border-color: rgba(179, 64, 54, 0.4);
-      justify-content: flex-start;
-    }
   }
 
   .hops-mermaid-error {

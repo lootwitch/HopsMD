@@ -4,16 +4,19 @@ import { Marked, type Tokens } from 'marked';
 import { dirname, resolveRelative } from '../core/path-utils';
 import { toAssetUrl } from '../core/tauri-bridge';
 
-/** Marker class our Mermaid placeholder DIVs carry — used by the renderer. */
-export const MERMAID_PLACEHOLDER_CLASS = 'hops-mermaid';
+/** Outer wrapper around every fenced code block (mermaid + plain text). */
+export const CODE_BLOCK_CLASS = 'hops-code-block';
 
-/** Generate a collision-resistant id for each placeholder. */
-function placeholderId(): string {
-  return `hops-mermaid-${Math.random().toString(36).slice(2, 10)}`;
+/** Inner host the MermaidRenderService writes the SVG into. */
+export const CODE_BLOCK_RENDERED_CLASS = 'hops-code-rendered';
+
+/** Generate a collision-resistant id per emitted block. */
+function blockId(): string {
+  return `hops-code-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Base64-encode a UTF-8 string. */
-function encodeMermaid(source: string): string {
+/** Base64-encode a UTF-8 string (used to round-trip the source through HTML). */
+function encodeBase64Utf8(source: string): string {
   const bytes = new TextEncoder().encode(source);
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
@@ -29,13 +32,24 @@ function escapeHtml(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/** Compact inline SVG icons for the toolbar (16×16 stroked, currentColor). */
+const ICON_TOGGLE = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M4 5l-2 2 2 2 M12 5l2 2-2 2 M9 3l-2 10"/></svg>`;
+const ICON_COPY = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M5 3h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M3 5v8a1 1 0 0 0 1 1h6"/></svg>`;
+const ICON_EDITOR = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M11 2l3 3-8 8-4 1 1-4 8-8z M10 3l3 3"/></svg>`;
+const ICON_FULLSCREEN = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M2 6V2h4 M14 6V2h-4 M2 10v4h4 M14 10v4h-4"/></svg>`;
+
 /**
  * Wraps `marked` with HopsMD's custom rules:
- *   - ```mermaid blocks become DIV placeholders (rendered later by
- *     MermaidRenderService).
- *   - Relative image paths are rewritten via the Tauri asset protocol so the
- *     webview can actually load them.
- * Output is run through DOMPurify before being handed back to the view.
+ *
+ *   - Every fenced code block (including ```mermaid) is emitted inside a
+ *     unified `.hops-code-block` container with a top-right toolbar:
+ *     toggle Renderer ↔ Quelltext (mermaid only), copy, open the parent
+ *     .md in the system editor, fullscreen (mermaid only).
+ *   - Mermaid blocks carry an empty `.hops-code-rendered` child that the
+ *     MermaidRenderService fills with SVG after the HTML is in the DOM.
+ *   - Relative image paths are rewritten via Tauri's asset protocol.
+ *
+ * Output is run through DOMPurify before the view binds it.
  */
 @Injectable({ providedIn: 'root' })
 export class MarkdownParserService {
@@ -48,19 +62,7 @@ export class MarkdownParserService {
   constructor() {
     this.marked.use({
       renderer: {
-        code: (token: Tokens.Code): string | false => {
-          if ((token.lang ?? '').trim().toLowerCase() === 'mermaid') {
-            const id = placeholderId();
-            const payload = encodeMermaid(token.text);
-            return (
-              `<div class="${MERMAID_PLACEHOLDER_CLASS}" id="${id}" ` +
-              `data-mermaid="${payload}" data-state="pending">` +
-              `<span class="hops-mermaid-pending">🍺 Maischt…</span>` +
-              `</div>`
-            );
-          }
-          return false;
-        },
+        code: (token: Tokens.Code): string => this.renderCodeBlock(token),
       },
     });
 
@@ -93,6 +95,47 @@ export class MarkdownParserService {
       ADD_ATTR: ['target'],
       ALLOW_DATA_ATTR: true,
     });
+  }
+
+  private renderCodeBlock(token: Tokens.Code): string {
+    const lang = (token.lang ?? '').trim().toLowerCase();
+    const isMermaid = lang === 'mermaid';
+    const id = blockId();
+    const payload = encodeBase64Utf8(token.text);
+    const escapedSource = escapeHtml(token.text);
+    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+    const langLabel = lang ? `<span class="hops-code-lang">${escapeHtml(lang)}</span>` : '';
+
+    const toggleBtn = isMermaid
+      ? `<button class="hops-code-action" type="button" data-action="toggle" title="Quelltext zeigen / Renderer">${ICON_TOGGLE}</button>`
+      : '';
+    const fullscreenBtn = isMermaid
+      ? `<button class="hops-code-action" type="button" data-action="fullscreen" title="Diagramm vergrößern">${ICON_FULLSCREEN}</button>`
+      : '';
+    const copyBtn = `<button class="hops-code-action" type="button" data-action="copy" title="Kopieren">${ICON_COPY}</button>`;
+    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="Datei im Standard-Editor öffnen">${ICON_EDITOR}</button>`;
+
+    const renderedSlot = isMermaid
+      ? `<div class="${CODE_BLOCK_RENDERED_CLASS}"><span class="hops-pending">🍺 Maischt…</span></div>`
+      : '';
+
+    return (
+      `<div class="${CODE_BLOCK_CLASS}" id="${id}" ` +
+      `data-kind="${isMermaid ? 'mermaid' : 'text'}" ` +
+      `data-state="${isMermaid ? 'pending' : 'static'}" ` +
+      `data-view="${isMermaid ? 'rendered' : 'source'}" ` +
+      `data-source="${payload}">` +
+      `<div class="hops-code-toolbar">` +
+      langLabel +
+      toggleBtn +
+      fullscreenBtn +
+      copyBtn +
+      editorBtn +
+      `</div>` +
+      renderedSlot +
+      `<pre class="hops-code-source"><code${langClass}>${escapedSource}</code></pre>` +
+      `</div>`
+    );
   }
 
   /**

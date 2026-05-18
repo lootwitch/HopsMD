@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { openPathBridge } from '../../core/tauri-bridge';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
@@ -94,6 +95,7 @@ function formatAbsolute(mtime: number): string {
       class="hops-markdown"
       [hidden]="!html()"
       [innerHTML]="html()"
+      (click)="onContentClick($event)"
     ></article>
   `,
   styles: [
@@ -227,5 +229,100 @@ export class MarkdownViewComponent {
       RELATIVE_TIME_TICK_MS,
     );
     inject(DestroyRef).onDestroy(() => clearInterval(tickId));
+  }
+
+  /**
+   * Event-delegate clicks on the toolbar buttons that the parser injects
+   * into every code block (`<button class="hops-code-action" data-action="…">`).
+   * Goes through the article so the bound innerHTML doesn't need per-button
+   * Angular event wiring.
+   */
+  protected onContentClick(event: Event): void {
+    const target = event.target as HTMLElement | null;
+    const action = target?.closest<HTMLElement>('.hops-code-action');
+    if (!action) return;
+    const block = action.closest<HTMLElement>('.hops-code-block');
+    if (!block) return;
+    const kind = action.dataset['action'];
+    event.preventDefault();
+    event.stopPropagation();
+
+    switch (kind) {
+      case 'copy':
+        void this.copySource(block, action);
+        break;
+      case 'toggle':
+        this.toggleView(block);
+        break;
+      case 'open-editor':
+        void this.openInEditor();
+        break;
+      // 'fullscreen' is handled in a follow-up commit.
+    }
+  }
+
+  private async copySource(block: HTMLElement, button: HTMLElement): Promise<void> {
+    const source = decodeBase64(block.dataset['source'] ?? '');
+    try {
+      await navigator.clipboard.writeText(source);
+      this.flashCopied(button);
+    } catch {
+      // Some webviews block clipboard without user gesture in odd ways.
+      // Fall back to a temp textarea select+copy.
+      const textarea = document.createElement('textarea');
+      textarea.value = source;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        this.flashCopied(button);
+      } catch {
+        // give up silently — at least the source view is one click away
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+  }
+
+  private flashCopied(button: HTMLElement): void {
+    const original = button.getAttribute('title') ?? '';
+    button.classList.add('copied');
+    button.setAttribute('title', 'Kopiert!');
+    setTimeout(() => {
+      button.classList.remove('copied');
+      button.setAttribute('title', original);
+    }, 1200);
+  }
+
+  private toggleView(block: HTMLElement): void {
+    const view = block.dataset['view'] === 'rendered' ? 'source' : 'rendered';
+    block.dataset['view'] = view;
+  }
+
+  private async openInEditor(): Promise<void> {
+    const path = this.state.selectedPath();
+    if (!path) return;
+    try {
+      await openPathBridge(path);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[HopsMD] open in editor failed:', err);
+    }
+  }
+}
+
+/** Inverse of the parser's encodeBase64Utf8 helper — kept inline to avoid a
+ *  service round-trip just to flip base64. */
+function decodeBase64(payload: string): string {
+  if (!payload) return '';
+  try {
+    const bin = atob(payload);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return '';
   }
 }

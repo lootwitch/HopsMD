@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { MERMAID_PLACEHOLDER_CLASS } from './markdown-parser.service';
+import { CODE_BLOCK_CLASS, CODE_BLOCK_RENDERED_CLASS } from './markdown-parser.service';
 
 /** Decode base64 → UTF-8 string. */
 function decodeMermaid(payload: string): string {
@@ -19,10 +19,21 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Initialises Mermaid lazily on first use and renders every pending
- * `.hops-mermaid` placeholder inside a given container. Renders are
- * isolated: a single broken diagram surfaces as a `<pre>` inside its own
- * placeholder and never aborts the rest of the document.
+ * Initialises Mermaid lazily on first use and renders every pending mermaid
+ * block inside a given container. Renders are isolated: a single broken
+ * diagram surfaces as a `<pre>` inside its own `.hops-code-rendered` host
+ * and never aborts the rest of the document.
+ *
+ * Container shape (see MarkdownParserService.renderCodeBlock):
+ *
+ *   <div class="hops-code-block" data-kind="mermaid"
+ *        data-state="pending|brewed|spoiled"
+ *        data-view="rendered|source"
+ *        data-source="<base64 mermaid text>">
+ *     <div class="hops-code-toolbar">…</div>
+ *     <div class="hops-code-rendered"> ← we write SVG (or error) here </div>
+ *     <pre class="hops-code-source"><code>…raw source…</code></pre>
+ *   </div>
  */
 @Injectable({ providedIn: 'root' })
 export class MermaidRenderService {
@@ -39,7 +50,6 @@ export class MermaidRenderService {
           securityLevel: 'strict',
           fontFamily: 'inherit',
           themeVariables: {
-            // Brewhouse palette — warm amber on stout.
             primaryColor: '#322215',
             primaryTextColor: '#f6efd9',
             primaryBorderColor: '#c87b1e',
@@ -54,50 +64,64 @@ export class MermaidRenderService {
     return this.mermaidPromise;
   }
 
-  /** Render every still-pending placeholder inside `container`. */
+  /** Render every still-pending mermaid block inside `container`. */
   async renderAll(container: HTMLElement | null): Promise<void> {
     if (!container) return;
-    const nodes = container.querySelectorAll<HTMLElement>(
-      `.${MERMAID_PLACEHOLDER_CLASS}[data-state="pending"]`,
+    const blocks = container.querySelectorAll<HTMLElement>(
+      `.${CODE_BLOCK_CLASS}[data-kind="mermaid"][data-state="pending"]`,
     );
-    if (nodes.length === 0) return;
-    const mermaid = await this.getMermaid();
+    if (blocks.length === 0) return;
 
-    await Promise.all(
-      Array.from(nodes).map((node) => this.renderOne(node, mermaid)),
-    );
-  }
-
-  private async renderOne(
-    node: HTMLElement,
-    mermaid: typeof import('mermaid').default,
-  ): Promise<void> {
-    const payload = node.getAttribute('data-mermaid') ?? '';
-    let source = '';
+    let mermaid: typeof import('mermaid').default;
     try {
-      source = decodeMermaid(payload);
+      mermaid = await this.getMermaid();
     } catch (err) {
-      this.markSpoiled(node, `Konnte Diagramm nicht dekodieren: ${err}`);
+      const message = err instanceof Error ? err.message : String(err);
+      blocks.forEach((block) => this.markSpoiled(block, `Mermaid konnte nicht geladen werden: ${message}`));
       return;
     }
 
-    const renderId = `${node.id || 'hops-mermaid'}-svg-${++this.counter}`;
+    await Promise.all(Array.from(blocks).map((block) => this.renderOne(block, mermaid)));
+  }
+
+  private async renderOne(
+    block: HTMLElement,
+    mermaid: typeof import('mermaid').default,
+  ): Promise<void> {
+    const target = block.querySelector<HTMLElement>(`.${CODE_BLOCK_RENDERED_CLASS}`);
+    if (!target) {
+      block.setAttribute('data-state', 'spoiled');
+      return;
+    }
+
+    const payload = block.getAttribute('data-source') ?? '';
+    let source: string;
+    try {
+      source = decodeMermaid(payload);
+    } catch (err) {
+      this.markSpoiled(block, `Konnte Diagramm-Quelltext nicht dekodieren: ${err}`);
+      return;
+    }
+
+    const renderId = `${block.id || 'hops-mermaid'}-svg-${++this.counter}`;
     try {
       const { svg } = await mermaid.render(renderId, source);
-      node.innerHTML = svg;
-      node.setAttribute('data-state', 'brewed');
+      target.innerHTML = svg;
+      block.setAttribute('data-state', 'brewed');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      this.markSpoiled(node, message, source);
+      this.markSpoiled(block, message, source);
     }
   }
 
-  private markSpoiled(node: HTMLElement, message: string, source?: string): void {
+  private markSpoiled(block: HTMLElement, message: string, source?: string): void {
+    const target = block.querySelector<HTMLElement>(`.${CODE_BLOCK_RENDERED_CLASS}`);
     const body = source
       ? `Trübung im Diagramm:\n\n${message}\n\n--- source ---\n${source}`
       : `Trübung im Diagramm:\n\n${message}`;
-    node.innerHTML = `<pre class="hops-mermaid-error">${escapeHtml(body)}</pre>`;
-    node.classList.add('spoiled');
-    node.setAttribute('data-state', 'spoiled');
+    if (target) {
+      target.innerHTML = `<pre class="hops-mermaid-error">${escapeHtml(body)}</pre>`;
+    }
+    block.setAttribute('data-state', 'spoiled');
   }
 }
