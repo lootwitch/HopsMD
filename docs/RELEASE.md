@@ -96,25 +96,28 @@ The `GITHUB_TOKEN` used by tauri-action is auto-provided.
 The very first version needs a manual PR.
 
 ```bash
-# Cut release v0.1.0 first (CI runs, MSI + NSIS land on Releases).
+# Cut release v1.0.0 first (CI runs, MSI + NSIS land on Releases).
 # Get SHA256 of each installer from the release-asset metadata.
 
 # Fork microsoft/winget-pkgs and clone your fork
 gh repo fork microsoft/winget-pkgs --clone
 cd winget-pkgs
-git checkout -b cloudbrew-hopsmd-0.1.0
+git checkout -b cloudbrew-hopsmd-1.0.0
 
-# Copy our templates into the correct path (lowercase first-letter folder!)
-mkdir -p manifests/c/lootwitch/HopsMD/0.1.0
-cp ../HopsMD/winget/*.yaml manifests/c/lootwitch/HopsMD/0.1.0/
+# Copy our templates into the correct path. The destination directory
+# is derived from PackageIdentifier "CloudBrew.HopsMD": the first
+# letter of the publisher segment becomes a lowercase one-letter dir,
+# the rest preserves case.
+mkdir -p manifests/c/CloudBrew/HopsMD/1.0.0
+cp ../HopsMD/winget/*.yaml manifests/c/CloudBrew/HopsMD/1.0.0/
 
 # Edit the two SHA256 placeholders in installer.yaml with the real hashes
 # Validate locally:
-winget validate --manifest manifests/c/lootwitch/HopsMD/0.1.0/
+winget validate --manifest manifests/c/CloudBrew/HopsMD/1.0.0/
 
-git add manifests/c/lootwitch/HopsMD/0.1.0/
-git commit -m "New version: CloudBrew.HopsMD version 0.1.0"
-git push origin cloudbrew-hopsmd-0.1.0
+git add manifests/c/CloudBrew/HopsMD/1.0.0/
+git commit -m "New version: CloudBrew.HopsMD version 1.0.0"
+git push origin cloudbrew-hopsmd-1.0.0
 gh pr create --repo microsoft/winget-pkgs --fill
 ```
 

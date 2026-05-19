@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-19
+
+Promotion to 1.0 — no functional changes vs. 0.1.1. Phase 1
+(read-only viewer) is considered feature-complete and the version
+label is bumped accordingly. Future breaking work (e.g. an editing
+mode, plugin surface) is reserved for 2.0; additive Phase-1 polish
+continues to ship as 1.x.
+
 ## [0.1.1] - 2026-05-19
 
 First public release. Bundles everything from the initial scaffold plus
@@ -56,5 +64,6 @@ fullscreen with pan + zoom, pinned Stammsudhaus, content zoom).
   `effect + queueMicrotask` to `afterRenderEffect` for reliable DOM
   timing.
 
-[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/lootwitch/HopsMD/releases/tag/v1.0.0
 [0.1.1]: https://github.com/lootwitch/HopsMD/releases/tag/v0.1.1

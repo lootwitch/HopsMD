@@ -1,13 +1,13 @@
 PackageIdentifier: CloudBrew.HopsMD
-PackageVersion: 0.1.0
+PackageVersion: 1.0.0
 PackageLocale: en-US
 Publisher: CloudBrew
-PublisherUrl: https://github.com/CloudBrew
+PublisherUrl: https://github.com/lootwitch
 PublisherSupportUrl: https://github.com/lootwitch/HopsMD/issues
 Author: Ludwig Biermann
 PackageName: HopsMD
 PackageUrl: https://github.com/lootwitch/HopsMD
-License: Proprietary
+License: MIT
 LicenseUrl: https://github.com/lootwitch/HopsMD/blob/main/LICENSE
 Copyright: © 2026 Ludwig Biermann (CloudBrew)
 ShortDescription: Local Markdown & Mermaid viewer.
@@ -24,6 +24,6 @@ Tags:
   - documentation
   - tauri
   - cloudbrew
-ReleaseNotesUrl: https://github.com/lootwitch/HopsMD/releases/tag/v0.1.0
+ReleaseNotesUrl: https://github.com/lootwitch/HopsMD/releases/tag/v1.0.0
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0

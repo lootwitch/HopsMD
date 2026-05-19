@@ -2,15 +2,16 @@
 # After that, winget-releaser updates the existing manifest automatically.
 #
 # To use:
-#   1. Cut release v0.1.0 (CI builds installers, sha256 hashes appear in
+#   1. Cut release v1.0.0 (CI builds installers, sha256 hashes appear in
 #      release-asset metadata).
 #   2. Fork microsoft/winget-pkgs, copy this directory into
-#      manifests/c/lootwitch/HopsMD/0.1.0/ (lowercase first-letter dir).
+#      manifests/c/CloudBrew/HopsMD/1.0.0/ (path is derived from the
+#      PackageIdentifier with the first letter lowercased).
 #   3. Fill in InstallerSha256 below and PackageVersion if it drifted.
 #   4. Open PR. Maintainers run automated validation; usually merged within a
 #      day or two.
 PackageIdentifier: CloudBrew.HopsMD
-PackageVersion: 0.1.0
+PackageVersion: 1.0.0
 InstallerLocale: en-US
 Platform:
   - Windows.Desktop
@@ -21,16 +22,15 @@ InstallModes:
   - silentWithProgress
 UpgradeBehavior: install
 Scope: machine
-ReleaseDate: 2026-05-18
+ReleaseDate: 2026-05-19
 Installers:
   - Architecture: x64
     InstallerType: nullsoft
-    NestedInstallerType: nullsoft
-    InstallerUrl: https://github.com/lootwitch/HopsMD/releases/download/v0.1.0/HopsMD_0.1.0_x64-setup.exe
+    InstallerUrl: https://github.com/lootwitch/HopsMD/releases/download/v1.0.0/HopsMD_1.0.0_x64-setup.exe
     InstallerSha256: REPLACE_WITH_SHA256_OF_NSIS_INSTALLER
   - Architecture: x64
     InstallerType: wix
-    InstallerUrl: https://github.com/lootwitch/HopsMD/releases/download/v0.1.0/HopsMD_0.1.0_x64_en-US.msi
+    InstallerUrl: https://github.com/lootwitch/HopsMD/releases/download/v1.0.0/HopsMD_1.0.0_x64_en-US.msi
     InstallerSha256: REPLACE_WITH_SHA256_OF_MSI_INSTALLER
 ManifestType: installer
 ManifestVersion: 1.6.0
