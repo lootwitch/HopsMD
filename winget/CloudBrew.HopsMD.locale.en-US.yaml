@@ -9,7 +9,7 @@ PackageName: HopsMD
 PackageUrl: https://github.com/lootwitch/HopsMD
 License: MIT
 LicenseUrl: https://github.com/lootwitch/HopsMD/blob/main/LICENSE
-Copyright: © 2026 Ludwig Biermann (CloudBrew)
+Copyright: © 2026 Ludwig Biermann
 ShortDescription: Local Markdown & Mermaid viewer.
 Description: |-
   HopsMD is a lightweight, offline-first reader for Markdown documentation
