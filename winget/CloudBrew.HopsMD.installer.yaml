@@ -10,6 +10,8 @@
 #   3. Fill in InstallerSha256 below and PackageVersion if it drifted.
 #   4. Open PR. Maintainers run automated validation; usually merged within a
 #      day or two.
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+
 PackageIdentifier: CloudBrew.HopsMD
 PackageVersion: 1.0.0
 InstallerLocale: en-US
