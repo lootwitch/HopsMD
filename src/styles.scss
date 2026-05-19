@@ -21,6 +21,11 @@
      edit DEFAULT_BODY_FONT / DEFAULT_MONO_FONT there to change app-wide. */
   --hops-font: "Segoe UI", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --hops-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  /* Content zoom factor for the rendered Markdown article. Driven at runtime
+     by ContentZoomService (Ctrl + Mousewheel adjusts it, persisted across
+     restarts). Only `.hops-markdown` consumes it, so the chrome stays stable. */
+  --hops-content-scale: 1;
 }
 
 * {
@@ -63,9 +68,15 @@ hops-root {
 /* Marked-rendered Markdown content lives in .hops-markdown — style it here so
    the dynamically-injected innerHTML inherits cleanly without ::ng-deep. */
 .hops-markdown {
-  max-width: 920px;
+  /* max-width tracks the zoom factor 1:1 so character-per-line stays roughly
+     constant — without this, zooming in shrinks the column in character terms
+     and lines wrap awkwardly short on wide displays. */
+  max-width: calc(920px * var(--hops-content-scale, 1));
   margin: 0 auto;
   padding: 2.5rem 3rem 6rem;
+  /* Ctrl+Wheel zoom — see ContentZoomService. The base 1rem here is the html
+     font-size (14px); inner headings use `em` so they cascade with this. */
+  font-size: calc(1rem * var(--hops-content-scale, 1));
 
   h1, h2, h3, h4, h5, h6 {
     color: var(--hops-foam);
@@ -76,10 +87,10 @@ hops-root {
     /* Leaves a bit of breathing room when scrolled-into-view from TOC clicks. */
     scroll-margin-top: 0.6rem;
   }
-  h1 { font-size: 1.9rem; border-bottom: 1px solid var(--hops-border); padding-bottom: .3em; }
-  h2 { font-size: 1.5rem; border-bottom: 1px solid var(--hops-border); padding-bottom: .25em; }
-  h3 { font-size: 1.2rem; }
-  h4 { font-size: 1.05rem; color: var(--hops-pilsner); }
+  h1 { font-size: 1.9em; border-bottom: 1px solid var(--hops-border); padding-bottom: .3em; }
+  h2 { font-size: 1.5em; border-bottom: 1px solid var(--hops-border); padding-bottom: .25em; }
+  h3 { font-size: 1.2em; }
+  h4 { font-size: 1.05em; color: var(--hops-pilsner); }
 
   p, ul, ol, blockquote, pre, table { margin: 0 0 1em; }
 
@@ -160,7 +171,7 @@ hops-root {
   .hops-code-lang {
     margin-right: auto;
     font-family: var(--hops-mono);
-    font-size: 0.72rem;
+    font-size: 0.72em;
     color: var(--hops-text-dim);
     text-transform: lowercase;
     letter-spacing: 0.5px;
@@ -196,7 +207,7 @@ hops-root {
   .hops-pending {
     color: var(--hops-text-dim);
     font-style: italic;
-    font-size: 0.85rem;
+    font-size: 0.85em;
   }
 
   blockquote {
