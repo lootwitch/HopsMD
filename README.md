@@ -26,22 +26,36 @@ and to a properly poured pint of beer.
 
 ## Install
 
-### winget (recommended, once the manifest is merged upstream)
+### winget — recommended
 
 ```powershell
 winget install CloudBrew.HopsMD
 ```
 
+This is the friction-free path: `winget install` does not trigger the
+Windows SmartScreen warning, even though the underlying installer is
+unsigned. **Once the manifest is merged into `microsoft/winget-pkgs`,
+this is the install path we point everyone at.**
+
+> The very first version is pending its manual submission to
+> `microsoft/winget-pkgs` — until that PR is merged (typically a day or
+> two), use the manual download below.
+
 ### Manual download
 
-Grab the installer from [the latest GitHub Release](https://github.com/lootwitch/HopsMD/releases/latest):
+For users who do not (yet) have winget, or who prefer downloading the
+installer directly: grab it from
+[the latest GitHub Release](https://github.com/lootwitch/HopsMD/releases/latest).
 
 - `HopsMD_<version>_x64-setup.exe` — NSIS, smaller, per-machine
 - `HopsMD_<version>_x64_en-US.msi` — MSI, group-policy friendly
 
-> **First-time SmartScreen warning:** installers are unsigned during the MVP
-> phase. Click **More info → Run anyway** to proceed. Code signing via
-> [SignPath.io OSS](https://signpath.org/opensource) is on the roadmap.
+> **First-time SmartScreen warning:** the installer is unsigned. Windows
+> will show *"Windows protected your PC"* — click **More info → Run
+> anyway** to proceed. Code signing is parked until the project has
+> accumulated enough public traction to qualify for one of the OSS
+> code-signing programmes (e.g. SignPath OSS). Until then, the cleanest
+> way to dodge the warning entirely is `winget install`.
 
 ### Updates
 
