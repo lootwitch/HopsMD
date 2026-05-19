@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-19
+
+First public release. Bundles everything from the initial scaffold plus
+the Phase-1 read-only feature set (folder picker, recursive Markdown
+tree, GitHub-flavoured rendering with live Mermaid, hot-reload on
+external edits, runtime DE/EN, TOC, code-block toolbar, Mermaid
+fullscreen with pan + zoom, pinned Stammsudhaus, content zoom).
+
 ### Added
 - Tauri v2 + Angular 21 scaffold with brewing-themed UI ("Sudhaus",
   "Rezeptbuch", "Maischen", "Anstich")
@@ -48,4 +56,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `effect + queueMicrotask` to `afterRenderEffect` for reliable DOM
   timing.
 
-[Unreleased]: https://github.com/lootwitch/HopsMD/commits/main
+[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/lootwitch/HopsMD/releases/tag/v0.1.1
