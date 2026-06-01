@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Read/Edit mode toggle** — any `.md` file can now be edited in-app.
+  Click the ✎ button in the filebar (or press **Ctrl+E**, or double-click the
+  rendered article) to switch to a **CodeMirror 6** source editor with Markdown
+  syntax highlighting and line numbers. A `•` dirty marker appears as soon as
+  the buffer diverges from the on-disk content.
+- **Explicit save** — **Ctrl+S** or the *Save* button writes the buffer to disk
+  atomically (BOM-free, via a sibling temp-file rename in Rust). The watcher
+  echo-cancels its own save event by content comparison, so the editor is
+  never clobbered by the round-trip.
+- **Unsaved-changes guards** — switching to another file, navigating to
+  Settings, or closing the window while the buffer is dirty triggers a
+  discard-confirmation prompt.
+- **External-change conflict banner** — if the open file is modified on disk
+  by another tool while you are editing, a banner appears offering *Reload
+  (discard my edits)* or *Keep my edits*.
+- **Tree file operations** — right-click any node in the recipe tree to access
+  *New file*, *New folder*, *Rename* (inline input in the tree row), and
+  *Delete* (confirmation required). The tree refreshes automatically via the
+  existing watcher after each structural change.
 - The open workspace (the **Sudhaus**) is now watched live: `.md` files and
   folders added, removed, or renamed on disk appear in the recipe-book tree
   automatically, without a manual *Nachschlag* (~250 ms debounce). The previous

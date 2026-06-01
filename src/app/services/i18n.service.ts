@@ -51,6 +51,16 @@ const EN = {
   'filebar.copyPath': 'Copy path',
   'filebar.copied': '✓ Path copied',
 
+  // -- edit mode --
+  'edit.enter': 'Edit',
+  'edit.save': 'Save',
+  'edit.cancel': 'Cancel',
+  'edit.dirtyTooltip': 'Unsaved changes',
+  'edit.discardConfirm': 'Discard unsaved changes?',
+  'edit.conflictMessage': 'This file changed on disk.',
+  'edit.conflictReload': 'Reload (discard my edits)',
+  'edit.conflictKeep': 'Keep my edits',
+
   // -- settings page --
   'settings.title': 'Settings',
   'settings.close': 'Close',
@@ -101,6 +111,13 @@ const EN = {
   'ctx.openFolder': 'Open folder in Explorer',
   'ctx.revealFile': 'Reveal in Explorer',
   'ctx.openInEditor': 'Open with default editor',
+
+  // -- tree file operations --
+  'fileops.newFile': 'New file',
+  'fileops.newFolder': 'New folder',
+  'fileops.rename': 'Rename',
+  'fileops.delete': 'Delete',
+  'fileops.deleteConfirm': 'Delete "{name}"? This cannot be undone.',
 
   // -- code block toolbar (parser-emitted markup) --
   'code.toggleSource': 'Show source / renderer',
@@ -163,6 +180,15 @@ const DE: Record<TranslationKey, string> = {
   'filebar.copyPath': 'Pfad kopieren',
   'filebar.copied': '✓ Pfad kopiert',
 
+  'edit.enter': 'Bearbeiten',
+  'edit.save': 'Speichern',
+  'edit.cancel': 'Abbrechen',
+  'edit.dirtyTooltip': 'Ungespeicherte Änderungen',
+  'edit.discardConfirm': 'Ungespeicherte Änderungen verwerfen?',
+  'edit.conflictMessage': 'Diese Datei wurde auf der Platte geändert.',
+  'edit.conflictReload': 'Neu laden (meine Änderungen verwerfen)',
+  'edit.conflictKeep': 'Meine Änderungen behalten',
+
   'settings.title': 'Einstellungen',
   'settings.close': 'Schließen',
   'settings.section.appearance': 'Darstellung',
@@ -208,6 +234,12 @@ const DE: Record<TranslationKey, string> = {
   'ctx.openFolder': 'Ordner im Explorer öffnen',
   'ctx.revealFile': 'Im Explorer anzeigen',
   'ctx.openInEditor': 'Mit Standard-Editor öffnen',
+
+  'fileops.newFile': 'Neue Datei',
+  'fileops.newFolder': 'Neuer Ordner',
+  'fileops.rename': 'Umbenennen',
+  'fileops.delete': 'Löschen',
+  'fileops.deleteConfirm': '„{name}" löschen? Das kann nicht rückgängig gemacht werden.',
 
   'code.toggleSource': 'Quelltext zeigen / Renderer',
   'code.copy': 'Kopieren',

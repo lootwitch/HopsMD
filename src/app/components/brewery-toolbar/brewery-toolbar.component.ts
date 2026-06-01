@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { UpdaterService } from '../../services/updater.service';
@@ -7,7 +7,7 @@ import { UpdaterService } from '../../services/updater.service';
 @Component({
   selector: 'hops-brewery-toolbar',
   standalone: true,
-  imports: [RouterLink],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="toolbar">
@@ -49,13 +49,14 @@ import { UpdaterService } from '../../services/updater.service';
             }
           </button>
         }
-        <a
+        <button
+          type="button"
           class="btn ghost icon"
-          routerLink="/settings"
+          (click)="goSettings()"
           [title]="i18n.t('toolbar.settings')"
         >
           ⚙
-        </a>
+        </button>
         <button
           type="button"
           class="btn locale"
@@ -227,6 +228,15 @@ export class BreweryToolbarComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly updater = inject(UpdaterService);
   protected readonly i18n = inject(I18nService);
+  private readonly router = inject(Router);
+
+  protected goSettings(): void {
+    if (this.state.dirty()) {
+      if (!confirm(this.i18n.t('edit.discardConfirm'))) return;
+      this.state.cancelEditing();
+    }
+    void this.router.navigate(['/settings']);
+  }
 
   protected onOpen(): void {
     void this.state.openBrewhouse();

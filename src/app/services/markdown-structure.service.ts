@@ -1,5 +1,15 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import { invokeBridge, isTauri, listenBridge, pickBrewhouse } from '../core/tauri-bridge';
+import {
+  createFolderBridge,
+  createRecipeBridge,
+  deletePathBridge,
+  invokeBridge,
+  isTauri,
+  listenBridge,
+  pickBrewhouse,
+  renamePathBridge,
+  saveRecipeBridge,
+} from '../core/tauri-bridge';
 import type { RecipeContent } from '../models/recipe-content.model';
 import type { RecipeNode } from '../models/recipe-node.model';
 
@@ -32,6 +42,9 @@ export class MarkdownStructureService {
   private readonly _lastModified = signal<number | null>(null);
   private readonly _loading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
+  private readonly _mode = signal<'viewing' | 'editing'>('viewing');
+  private readonly _editBuffer = signal<string>('');
+  private readonly _externalConflict = signal<boolean>(false);
 
   // --- public read-only views ---
   readonly brewhouse = this._brewhouse.asReadonly();
@@ -41,6 +54,10 @@ export class MarkdownStructureService {
   readonly lastModified = this._lastModified.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
+  readonly mode = this._mode.asReadonly();
+  readonly editBuffer = this._editBuffer.asReadonly();
+  readonly externalConflict = this._externalConflict.asReadonly();
+  readonly dirty = computed(() => this._mode() === 'editing' && this._editBuffer() !== this._selectedContent());
 
   readonly isOpen = computed(() => this._tree() !== null);
 
@@ -108,6 +125,69 @@ export class MarkdownStructureService {
     await this.openFileByPath(node.path);
   }
 
+  /** Enter edit mode, seeding the buffer from the current on-disk content. */
+  enterEditing(): void {
+    if (!this._selectedPath()) return;
+    this._editBuffer.set(this._selectedContent());
+    this._externalConflict.set(false);
+    this._mode.set('editing');
+  }
+
+  /** Editor change handler. */
+  updateBuffer(text: string): void {
+    this._editBuffer.set(text);
+  }
+
+  /** Leave edit mode, discarding the buffer. Caller is responsible for the
+   *  unsaved-changes guard. */
+  cancelEditing(): void {
+    this._mode.set('viewing');
+    this._editBuffer.set('');
+    this._externalConflict.set(false);
+  }
+
+  /** Write the buffer to disk and return to viewing. */
+  async saveRecipe(): Promise<void> {
+    const path = this._selectedPath();
+    if (!path || this._mode() !== 'editing') return;
+    const content = this._editBuffer();
+    this._loading.set(true);
+    this._error.set(null);
+    try {
+      await saveRecipeBridge(path, content);
+      // Set selectedContent to what is now on disk so the watcher echo-cancels
+      // the resulting recipe:changed and `dirty` clears.
+      this._selectedContent.set(content);
+      this._lastModified.set(Date.now());
+      this._externalConflict.set(false);
+      this._mode.set('viewing');
+      this._editBuffer.set('');
+    } catch (err) {
+      this._error.set(this.describe(err));
+    } finally {
+      this._loading.set(false);
+    }
+  }
+
+  /** Reload the open file from disk, discarding the edit buffer (used by the
+   *  external-change conflict banner's "Reload" action). */
+  async reloadFromDisk(): Promise<void> {
+    const path = this._selectedPath();
+    if (!path) return;
+    try {
+      await this.tap(path);
+      this._editBuffer.set(this._selectedContent());
+      this._externalConflict.set(false);
+    } catch (err) {
+      this._error.set(this.describe(err));
+    }
+  }
+
+  /** Dismiss the conflict banner, keeping the user's edits. */
+  keepMyEdits(): void {
+    this._externalConflict.set(false);
+  }
+
   /**
    * Open an arbitrary markdown file by absolute path — used for cross-file
    * links inside the viewer, where the target isn't necessarily the node
@@ -115,6 +195,10 @@ export class MarkdownStructureService {
    * brewhouse watcher which file is now open via `set_open_recipe`.
    */
   async openFileByPath(path: string): Promise<void> {
+    if (this.dirty()) {
+      this._error.set('Ungespeicherte Änderungen — bitte zuerst speichern oder verwerfen.');
+      return;
+    }
     this._loading.set(true);
     this._error.set(null);
     this._selectedPath.set(path);
@@ -143,8 +227,48 @@ export class MarkdownStructureService {
     this._selectedPath.set(null);
     this._selectedContent.set('');
     this._lastModified.set(null);
+    this._mode.set('viewing');
+    this._editBuffer.set('');
+    this._externalConflict.set(false);
     if (isTauri()) {
       void invokeBridge<void>('set_open_recipe', { path: null }).catch(() => undefined);
+    }
+  }
+
+  // --- file operations (tree) ---
+
+  async newFile(dir: string, name: string): Promise<string | null> {
+    try {
+      return await createRecipeBridge(dir, name);
+    } catch (err) {
+      this._error.set(this.describe(err));
+      return null;
+    }
+  }
+
+  async newFolder(dir: string, name: string): Promise<void> {
+    try {
+      await createFolderBridge(dir, name);
+    } catch (err) {
+      this._error.set(this.describe(err));
+    }
+  }
+
+  async renameEntry(from: string, toName: string): Promise<string | null> {
+    try {
+      return await renamePathBridge(from, toName);
+    } catch (err) {
+      this._error.set(this.describe(err));
+      return null;
+    }
+  }
+
+  async deleteEntry(path: string): Promise<void> {
+    try {
+      await deletePathBridge(path);
+      if (this._selectedPath() === path) this.closeRecipe();
+    } catch (err) {
+      this._error.set(this.describe(err));
     }
   }
 
@@ -158,12 +282,20 @@ export class MarkdownStructureService {
 
   private onRecipeChanged(path: string): void {
     if (path !== this._selectedPath()) return;
-    // Best-effort silent re-read. We don't toggle the global loading flag —
-    // a flicker on every save would be worse than a stale half-second of
-    // content. Errors get surfaced through the error banner.
     void invokeBridge<RecipeContent>('tap_recipe', { path })
       .then((result) => {
         if (path !== this._selectedPath()) return; // raced selection change
+        // Echo-cancel: identical content means this is our own save bouncing
+        // back through the watcher — ignore it.
+        if (result.content === this._selectedContent()) return;
+        // Genuine external change.
+        if (this._mode() === 'editing') {
+          // Update the on-disk baseline but DON'T clobber the buffer; warn.
+          this._selectedContent.set(result.content);
+          this._lastModified.set(result.modifiedAt ?? Date.now());
+          this._externalConflict.set(true);
+          return;
+        }
         this._selectedContent.set(result.content);
         this._lastModified.set(result.modifiedAt ?? Date.now());
         this._error.set(null);

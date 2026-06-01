@@ -1,5 +1,5 @@
 // src/app/components/viewer-shell/viewer-shell.component.ts
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { BreweryToolbarComponent } from '../brewery-toolbar/brewery-toolbar.component';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { FavoritesPanelComponent } from '../favorites-panel/favorites-panel.component';
@@ -7,6 +7,8 @@ import { FileTreeComponent } from '../file-tree/file-tree.component';
 import { MarkdownViewComponent } from '../markdown-view/markdown-view.component';
 import { MermaidFullscreenComponent } from '../mermaid-fullscreen/mermaid-fullscreen.component';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
+import { I18nService } from '../../services/i18n.service';
+import { isTauri } from '../../core/tauri-bridge';
 
 @Component({
   selector: 'hops-viewer-shell',
@@ -106,4 +108,22 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
 })
 export class ViewerShellComponent {
   protected readonly state = inject(MarkdownStructureService);
+  private readonly i18n = inject(I18nService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    if (isTauri()) {
+      void (async () => {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        const unlisten = await win.onCloseRequested(async (event) => {
+          if (this.state.dirty()) {
+            const leave = confirm(this.i18n.t('edit.discardConfirm'));
+            if (!leave) event.preventDefault();
+          }
+        });
+        this.destroyRef.onDestroy(() => unlisten());
+      })();
+    }
+  }
 }

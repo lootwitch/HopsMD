@@ -25,6 +25,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::recipe_book::open_brewhouse,
             commands::recipe_book::tap_recipe,
+            commands::recipe_book::save_recipe,
+            commands::recipe_book::create_recipe,
+            commands::recipe_book::create_folder,
+            commands::recipe_book::rename_path,
+            commands::recipe_book::delete_path,
             commands::watcher::watch_brewhouse,
             commands::watcher::set_open_recipe,
             commands::watcher::unwatch_brewhouse,

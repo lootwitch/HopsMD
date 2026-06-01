@@ -83,6 +83,35 @@ export async function openUrlBridge(url: string): Promise<void> {
   await openUrl(url);
 }
 
+export async function saveRecipeBridge(path: string, content: string): Promise<void> {
+  if (!isTauri()) {
+    throw new Error(
+      'Speichern ist nur im Tauri-Shell verfügbar — bitte "npm run tauri:dev" nutzen.',
+    );
+  }
+  return invokeBridge<void>('save_recipe', { path, content });
+}
+
+export async function createRecipeBridge(dir: string, name: string): Promise<string> {
+  if (!isTauri()) throw new Error('Datei anlegen ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge<string>('create_recipe', { dir, name });
+}
+
+export async function createFolderBridge(dir: string, name: string): Promise<string> {
+  if (!isTauri()) throw new Error('Ordner anlegen ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge<string>('create_folder', { dir, name });
+}
+
+export async function renamePathBridge(from: string, toName: string): Promise<string> {
+  if (!isTauri()) throw new Error('Umbenennen ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge<string>('rename_path', { from, toName });
+}
+
+export async function deletePathBridge(path: string): Promise<void> {
+  if (!isTauri()) throw new Error('Löschen ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge<void>('delete_path', { path });
+}
+
 /**
  * Subscribe to a Tauri event. In browser-only mode this resolves to a no-op
  * unsubscribe so callers don't need to special-case the dev workflow.

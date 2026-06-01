@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  HostListener,
   afterRenderEffect,
   computed,
   effect,
@@ -19,6 +20,7 @@ import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
+import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { TocComponent } from '../toc/toc.component';
 
 /** How often the "Updated X ago" label re-evaluates. 5 s is fine-grained
@@ -43,7 +45,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 @Component({
   selector: 'hops-markdown-view',
   standalone: true,
-  imports: [TocComponent],
+  imports: [TocComponent, MarkdownEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state.error(); as err) {
@@ -73,6 +75,15 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
             {{ i18n.t('view.modifiedPrefix') }} {{ label }}
           </span>
         }
+        <span class="filebar-actions">
+          @if (state.dirty()) { <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span> }
+          @if (state.mode() === 'viewing' && state.selectedPath()) {
+            <button type="button" class="fbtn" (click)="enterEdit()" [title]="i18n.t('edit.enter')">✎</button>
+          } @else if (state.mode() === 'editing') {
+            <button type="button" class="fbtn primary" (click)="save()">{{ i18n.t('edit.save') }}</button>
+            <button type="button" class="fbtn" (click)="cancel()">{{ i18n.t('edit.cancel') }}</button>
+          }
+        </span>
       </header>
     }
 
@@ -93,37 +104,74 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
       </div>
     }
 
-    <div class="view-grid" [hidden]="!html()">
-      <article
-        #host
-        class="hops-markdown"
-        [innerHTML]="html()"
-        (click)="onContentClick($event)"
-      ></article>
-      @if (toc().length > 0) {
-        <aside class="toc-pane">
-          <hops-toc
-            [items]="toc()"
-            [collapsed]="tocCollapsed()"
-            (itemSelected)="scrollToHeading($event)"
-            (collapseToggled)="onTocToggle()"
-          />
-        </aside>
-      }
-    </div>
+    @if (state.mode() === 'editing') {
+      <div class="editor-container">
+        @if (state.externalConflict()) {
+          <section class="banner banner-conflict">
+            {{ i18n.t('edit.conflictMessage') }}
+            <button type="button" (click)="reload()">{{ i18n.t('edit.conflictReload') }}</button>
+            <button type="button" (click)="keep()">{{ i18n.t('edit.conflictKeep') }}</button>
+          </section>
+        }
+        <hops-markdown-editor
+          class="editor-pane"
+          [content]="state.editBuffer()"
+          (contentChange)="state.updateBuffer($event)"
+        />
+      </div>
+    } @else {
+      <div class="view-grid" [hidden]="!html()">
+        <article
+          #host
+          class="hops-markdown"
+          [innerHTML]="html()"
+          (click)="onContentClick($event)"
+          (dblclick)="enterEdit()"
+        ></article>
+        @if (toc().length > 0) {
+          <aside class="toc-pane">
+            <hops-toc
+              [items]="toc()"
+              [collapsed]="tocCollapsed()"
+              (itemSelected)="scrollToHeading($event)"
+              (collapseToggled)="onTocToggle()"
+            />
+          </aside>
+        }
+      </div>
+    }
   `,
   styles: [
     `
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
         height: 100%;
-        overflow-y: auto;
+        min-height: 0;
         background: var(--hops-stout);
+        /* No overflow here: each branch owns its own scroll (view-grid scrolls
+           the rendered article; CodeMirror scrolls itself in edit mode). */
       }
       .view-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: start;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .editor-container {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        overflow: hidden; /* CodeMirror owns its internal scroller */
+      }
+      .editor-pane {
+        flex: 1;
+        min-height: 0;
+        height: 100%;
       }
       .toc-pane {
         position: sticky;
@@ -135,11 +183,34 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         margin: 0;
         padding: 0.6rem 1rem;
         font-size: 0.85rem;
+        flex-shrink: 0;
       }
       .banner-error {
         background: rgba(179, 64, 54, 0.18);
         color: #ffd8d5;
         border-bottom: 1px solid rgba(179, 64, 54, 0.4);
+      }
+      .banner-conflict {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: rgba(245, 197, 66, 0.12);
+        color: var(--hops-pilsner);
+        border-bottom: 1px solid rgba(245, 197, 66, 0.3);
+      }
+      .banner-conflict button {
+        appearance: none;
+        background: rgba(245, 197, 66, 0.15);
+        border: 1px solid rgba(245, 197, 66, 0.35);
+        border-radius: 3px;
+        color: var(--hops-foam);
+        font-size: 0.78rem;
+        padding: 0.15rem 0.55rem;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .banner-conflict button:hover {
+        background: rgba(245, 197, 66, 0.25);
       }
       .filebar {
         display: flex;
@@ -151,6 +222,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         font-family: var(--hops-mono);
         font-size: 0.78rem;
         color: var(--hops-text-dim);
+        flex-shrink: 0;
       }
       .filebar-path {
         flex: 1;
@@ -189,6 +261,46 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
       .filebar-modified {
         color: var(--hops-pilsner);
         white-space: nowrap;
+      }
+      .filebar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+      }
+      .dirty {
+        color: var(--hops-pilsner);
+        font-size: 1.1rem;
+        line-height: 1;
+        font-weight: 700;
+      }
+      .fbtn {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--hops-border);
+        border-radius: 3px;
+        color: var(--hops-text-dim);
+        font-family: var(--hops-mono);
+        font-size: 0.75rem;
+        padding: 0.15rem 0.5rem;
+        cursor: pointer;
+        white-space: nowrap;
+        line-height: 1.4;
+      }
+      .fbtn:hover {
+        background: rgba(245, 197, 66, 0.1);
+        color: var(--hops-foam);
+        border-color: rgba(245, 197, 66, 0.35);
+      }
+      .fbtn.primary {
+        background: rgba(245, 197, 66, 0.15);
+        border-color: rgba(245, 197, 66, 0.4);
+        color: var(--hops-pilsner);
+        font-weight: 500;
+      }
+      .fbtn.primary:hover {
+        background: rgba(245, 197, 66, 0.25);
+        color: var(--hops-foam);
       }
       .empty {
         max-width: 540px;
@@ -353,6 +465,48 @@ export class MarkdownViewComponent {
     if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
     this.pathCopiedTimer = setTimeout(() => this.pathCopied.set(false), PATH_COPIED_MS);
   }
+
+  // ── Edit mode controls ──────────────────────────────────────────────────
+
+  protected enterEdit(): void {
+    this.state.enterEditing();
+  }
+
+  protected async save(): Promise<void> {
+    await this.state.saveRecipe();
+  }
+
+  protected cancel(): void {
+    if (this.state.dirty() && !confirm(this.i18n.t('edit.discardConfirm'))) return;
+    this.state.cancelEditing();
+  }
+
+  protected reload(): void {
+    void this.state.reloadFromDisk();
+  }
+
+  protected keep(): void {
+    this.state.keepMyEdits();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected onKey(e: KeyboardEvent): void {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (this.state.mode() === 'editing') void this.state.saveRecipe();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      if (this.state.mode() === 'viewing' && this.state.selectedPath()) this.state.enterEditing();
+      return;
+    }
+    if (e.key === 'Escape' && this.state.mode() === 'editing') {
+      this.cancel();
+    }
+  }
+
+  // ── Content click handler ───────────────────────────────────────────────
 
   /**
    * Event-delegate clicks on the toolbar buttons that the parser injects

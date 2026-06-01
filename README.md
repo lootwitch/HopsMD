@@ -13,7 +13,7 @@ A lightweight, local-first Markdown & Mermaid viewer built on **Tauri v2** + **A
 HopsMD is a side project of the **CloudBrew** family — a small love letter to documentation
 and to a properly poured pint of beer.
 
-## What it does (Phase 1 — Read Only)
+## What it does (Phase 2 — Read & Edit)
 
 - Pick a local folder (the **Sudhaus / Brewhouse**) via the native Tauri file dialog.
 - Browse the recursive Markdown tree (the **Rezeptbuch / Recipe Book**) in a left sidebar.
@@ -22,6 +22,12 @@ and to a properly poured pint of beer.
   diagrams** — plus **math** (KaTeX inline & display), **footnotes**, **admonitions /
   callouts** (NOTE / TIP / IMPORTANT / WARNING / CAUTION), **task lists**, **emoji
   shortcodes**, **definition lists**, and **wiki-links** (`[[Page]]` / `[[Page|label]]`).
+- **Edit any `.md` file** — press **Ctrl+E**, double-click the article, or click the
+  ✎ button to open a **CodeMirror 6** source editor with Markdown syntax highlighting.
+  Save with **Ctrl+S** (or the *Save* button); the file is written atomically and the
+  view switches back to the rendered article instantly.
+- **Tree file operations** — right-click a node to create a new file or folder, rename
+  (inline input), or delete (with confirmation). The tree refreshes automatically.
 - Auto-refresh on external edits — save in your editor, the view updates within ~250 ms.
 - Live folder watching — `.md` files and folders added, removed, or renamed on disk
   appear in the tree automatically, no manual *Nachschlag* needed.

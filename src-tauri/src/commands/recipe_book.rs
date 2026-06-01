@@ -96,6 +96,8 @@ pub enum CommandError {
     Io(#[from] std::io::Error),
     #[error("Datei enthält ungültiges UTF-8")]
     InvalidUtf8,
+    #[error("Pfad existiert bereits: {0}")]
+    AlreadyExists(String),
     #[error("Watcher-Fehler: {0}")]
     Watch(String),
 }
@@ -151,6 +153,108 @@ pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
         content,
         modified_at: modified_at_epoch_ms(&meta),
     })
+}
+
+#[tauri::command]
+pub fn save_recipe(path: String, content: String) -> Result<(), CommandError> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(CommandError::NotFound(path));
+    }
+    if !p.is_file() {
+        return Err(CommandError::NotAFile(path));
+    }
+    if !is_markdown(&p) {
+        return Err(CommandError::NotMarkdown(path));
+    }
+    if content.len() as u64 > MAX_FILE_SIZE {
+        return Err(CommandError::TooLarge { size: content.len() as u64 });
+    }
+    atomic_write(&p, &content)?;
+    Ok(())
+}
+
+/// Reject names that are empty, contain path separators, or are `.`/`..`.
+fn is_safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains('/')
+        && !name.contains('\\')
+}
+
+#[tauri::command]
+pub fn create_recipe(dir: String, name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&name) {
+        return Err(CommandError::NotAFile(name));
+    }
+    let d = PathBuf::from(&dir);
+    if !d.is_dir() {
+        return Err(CommandError::NotADirectory(dir));
+    }
+    let file_name = if name.to_ascii_lowercase().ends_with(".md") {
+        name.clone()
+    } else {
+        format!("{name}.md")
+    };
+    let target = d.join(&file_name);
+    if target.exists() {
+        return Err(CommandError::AlreadyExists(target.to_string_lossy().into_owned()));
+    }
+    let stem = target.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    fs::write(&target, format!("# {stem}\n"))?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn create_folder(dir: String, name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&name) {
+        return Err(CommandError::NotADirectory(name));
+    }
+    let target = PathBuf::from(&dir).join(&name);
+    if target.exists() {
+        return Err(CommandError::AlreadyExists(target.to_string_lossy().into_owned()));
+    }
+    fs::create_dir(&target)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn rename_path(from: String, to_name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&to_name) {
+        return Err(CommandError::NotAFile(to_name));
+    }
+    let src = PathBuf::from(&from);
+    if !src.exists() {
+        return Err(CommandError::NotFound(from));
+    }
+    let parent = src.parent().ok_or_else(|| CommandError::NotFound(from.clone()))?;
+    // Preserve a markdown extension on files when the user omits it.
+    let final_name = if src.is_file() && is_markdown(&src) && !to_name.to_ascii_lowercase().ends_with(".md") {
+        format!("{to_name}.md")
+    } else {
+        to_name.clone()
+    };
+    let dest = parent.join(&final_name);
+    if dest.exists() {
+        return Err(CommandError::AlreadyExists(dest.to_string_lossy().into_owned()));
+    }
+    fs::rename(&src, &dest)?;
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn delete_path(path: String) -> Result<(), CommandError> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(CommandError::NotFound(path));
+    }
+    if p.is_dir() {
+        fs::remove_dir_all(&p)?;
+    } else {
+        fs::remove_file(&p)?;
+    }
+    Ok(())
 }
 
 fn modified_at_epoch_ms(meta: &fs::Metadata) -> Option<i64> {
@@ -335,6 +439,15 @@ fn file_name(path: &Path) -> String {
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
 }
 
+/// Write `content` to `path` atomically: write a sibling temp file on the same
+/// filesystem, then rename it onto the target. Keeps the watcher seeing a single
+/// event and avoids a half-written file on crash.
+fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    let tmp = path.with_extension("hopsmd-tmp");
+    fs::write(&tmp, content.as_bytes())?;
+    fs::rename(&tmp, path)
+}
+
 /// Remove a leading UTF-8 BOM (`\u{feff}`) if present.  Some editors (notably
 /// Windows Notepad and certain CI toolchains) prepend a BOM even to UTF-8
 /// files; marked trips on it and renders a stray `ï»¿` at the top of the page.
@@ -347,7 +460,28 @@ pub(crate) fn strip_bom(mut s: String) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::strip_bom;
+    use super::{atomic_write, is_safe_name, strip_bom};
+    use std::fs;
+
+    #[test]
+    fn atomic_write_replaces_file_contents() {
+        let dir = std::env::temp_dir().join("hopsmd_test_atomic");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.md");
+        fs::write(&f, "old").unwrap();
+        atomic_write(&f, "new content").unwrap();
+        assert_eq!(fs::read_to_string(&f).unwrap(), "new content");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn safe_name_rejects_traversal() {
+        assert!(is_safe_name("note.md"));
+        assert!(!is_safe_name(""));
+        assert!(!is_safe_name(".."));
+        assert!(!is_safe_name("a/b"));
+        assert!(!is_safe_name("a\\b"));
+    }
 
     #[test]
     fn strips_leading_bom_only() {
