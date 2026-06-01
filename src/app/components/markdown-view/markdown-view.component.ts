@@ -420,11 +420,9 @@ export class MarkdownViewComponent {
       return;
     }
 
-    // External URL — defer to the system browser/handler. We only allow
-    // http(s) here because the opener plugin's URL scope is restricted to
-    // those schemes in our capability (broader patterns like `mailto:*`
-    // aren't accepted by the scope parser).
-    if (/^https?:/i.test(rawHref)) {
+    // External URL — defer to the system browser/handler. Covers http(s),
+    // mailto:, and tel: links — all routed through the opener plugin.
+    if (/^(https?|mailto|tel):/i.test(rawHref)) {
       try {
         await openUrlBridge(rawHref);
       } catch (err) {

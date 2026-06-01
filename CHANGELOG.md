@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings page (`#/settings`) with an Appearance section: colour theme presets
   (Brewpub Dark / Pilsner Light / High Contrast) plus per-token fine-tuning,
   body/mono fonts, text size, and language — all saved automatically.
+- Markdown rendering parity: syntax highlighting (highlight.js, lazy-loaded per
+  fenced block), math via KaTeX (inline `$…$` and display `$$…$$`), footnotes
+  (`marked-footnote`), admonitions/callouts (`marked-alert`: NOTE / TIP /
+  IMPORTANT / WARNING / CAUTION), task-list checkboxes, emoji shortcodes
+  (`:beer:` style), definition lists, and wiki-links (`[[Page]]` /
+  `[[Page|label]]`). Custom extensions live in `core/markdown-extensions/`.
 
 ## [1.0.0] - 2026-05-19
 

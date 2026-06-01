@@ -1,3 +1,5 @@
+@import 'katex/dist/katex.min.css';
+
 /* HopsMD — global styles. Theme inspired by a dimly lit brewpub. */
 
 :root {
@@ -251,4 +253,87 @@ hops-root {
     background: transparent;
     border: 0;
   }
+
+  /* highlight.js token colours (brewpub-toned) */
+  .hljs { color: var(--hops-text); background: transparent; }
+  .hljs-comment, .hljs-quote { color: var(--hops-text-dim); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-name, .hljs-tag { color: var(--hops-pilsner); }
+  .hljs-string, .hljs-attr, .hljs-template-tag, .hljs-addition { color: var(--hops-leaf); }
+  .hljs-number, .hljs-literal, .hljs-variable, .hljs-type, .hljs-class .hljs-title { color: var(--hops-amber); }
+  .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--hops-foam); }
+  .hljs-meta, .hljs-symbol, .hljs-bullet, .hljs-link { color: #d08a4e; }
+  .hljs-deletion { color: var(--hops-cherry); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: 700; }
+
+  .hops-frontmatter {
+    margin: 0 0 1.5em;
+    border: 1px dashed var(--hops-border);
+    border-radius: 6px;
+    background: rgba(245, 197, 66, 0.04);
+
+    summary {
+      cursor: pointer;
+      padding: 0.4em 0.75em;
+      color: var(--hops-text-dim);
+      font-family: var(--hops-mono);
+      font-size: 0.78em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    pre {
+      margin: 0;
+      border: 0;
+      border-top: 1px solid var(--hops-border);
+      border-radius: 0;
+      font-size: 0.82em;
+    }
+  }
+
+  /* ---- Task 4: Footnotes ---- */
+  .footnotes {
+    margin-top: 2.5em;
+    border-top: 1px solid var(--hops-border);
+    font-size: 0.85em;
+    color: var(--hops-text-dim);
+  }
+  .footnotes ol { padding-left: 1.2em; }
+  a[data-footnote-ref], .footnote-ref { color: var(--hops-pilsner); font-size: 0.8em; vertical-align: super; }
+  a[data-footnote-backref] { color: var(--hops-pilsner); text-decoration: none; }
+
+  /* ---- Task 6: Admonitions / callouts ---- */
+  .markdown-alert {
+    margin: 1em 0;
+    padding: 0.6em 1em;
+    border-left: 4px solid var(--hops-malt);
+    border-radius: 0 6px 6px 0;
+    background: rgba(245, 197, 66, 0.05);
+    .markdown-alert-title { font-weight: 600; display: flex; align-items: center; gap: 0.4em; margin: 0 0 0.3em; }
+    > :last-child { margin-bottom: 0; }
+  }
+  .markdown-alert-note { border-left-color: #4a90d9; .markdown-alert-title { color: #6ab0ff; } }
+  .markdown-alert-tip { border-left-color: var(--hops-leaf); .markdown-alert-title { color: var(--hops-leaf); } }
+  .markdown-alert-important { border-left-color: var(--hops-pilsner); .markdown-alert-title { color: var(--hops-pilsner); } }
+  .markdown-alert-warning { border-left-color: var(--hops-amber); .markdown-alert-title { color: var(--hops-amber); } }
+  .markdown-alert-caution { border-left-color: var(--hops-cherry); .markdown-alert-title { color: var(--hops-cherry); } }
+
+  /* ---- Task 7: Task-list styling ---- */
+  li.task-list-item { list-style: none; margin-left: -1.2em; }
+  li.task-list-item input[type='checkbox'] {
+    margin: 0 0.5em 0 0;
+    accent-color: var(--hops-pilsner);
+    transform: translateY(1px);
+  }
+  ul:has(> li.task-list-item) { padding-left: 1.2em; }
+
+  /* ---- Task 9: Definition lists ---- */
+  .hops-deflist {
+    margin: 0 0 1em;
+    dt { color: var(--hops-foam); font-weight: 600; margin-top: 0.6em; }
+    dd { margin: 0 0 0.2em 1.2em; color: var(--hops-text); }
+  }
+
+  /* ---- Task 10: Wiki-links ---- */
+  a.hops-wikilink { color: var(--hops-pilsner); border-bottom: 1px dotted var(--hops-pilsner); text-decoration: none; }
+  a.hops-wikilink:hover { background: rgba(245, 197, 66, 0.08); }
 }

@@ -146,7 +146,7 @@ pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
         return Err(CommandError::TooLarge { size: meta.len() });
     }
     let bytes = fs::read(&p)?;
-    let content = String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)?;
+    let content = strip_bom(String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)?);
     Ok(RecipeContent {
         content,
         modified_at: modified_at_epoch_ms(&meta),
@@ -333,4 +333,37 @@ fn file_name(path: &Path) -> String {
     path.file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
+/// Remove a leading UTF-8 BOM (`\u{feff}`) if present.  Some editors (notably
+/// Windows Notepad and certain CI toolchains) prepend a BOM even to UTF-8
+/// files; marked trips on it and renders a stray `ï»¿` at the top of the page.
+pub(crate) fn strip_bom(mut s: String) -> String {
+    if s.starts_with('\u{feff}') {
+        s.drain(..'\u{feff}'.len_utf8());
+    }
+    s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_bom;
+
+    #[test]
+    fn strips_leading_bom_only() {
+        // BOM at the start is removed.
+        let with_bom = "\u{feff}# Hello\nworld".to_string();
+        assert_eq!(strip_bom(with_bom), "# Hello\nworld");
+
+        // String without BOM is unchanged.
+        let no_bom = "# Hello\nworld".to_string();
+        assert_eq!(strip_bom(no_bom), "# Hello\nworld");
+
+        // BOM in the middle is NOT removed.
+        let mid_bom = "Hello\u{feff}world".to_string();
+        assert_eq!(strip_bom(mid_bom.clone()), mid_bom);
+
+        // Empty string is unchanged.
+        assert_eq!(strip_bom(String::new()), "");
+    }
 }

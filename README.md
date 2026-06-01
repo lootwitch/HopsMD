@@ -17,8 +17,11 @@ and to a properly poured pint of beer.
 
 - Pick a local folder (the **Sudhaus / Brewhouse**) via the native Tauri file dialog.
 - Browse the recursive Markdown tree (the **Rezeptbuch / Recipe Book**) in a left sidebar.
-- View any `.md` file with full rendering: GitHub-flavoured Markdown, syntax-highlighted
-  code, locally-resolved images, and **live MermaidJS diagrams**.
+- View any `.md` file with full rendering: GitHub-flavoured Markdown, **syntax-highlighted
+  code** (highlight.js, lazy-loaded), locally-resolved images, and **live MermaidJS
+  diagrams** — plus **math** (KaTeX inline & display), **footnotes**, **admonitions /
+  callouts** (NOTE / TIP / IMPORTANT / WARNING / CAUTION), **task lists**, **emoji
+  shortcodes**, **definition lists**, and **wiki-links** (`[[Page]]` / `[[Page|label]]`).
 - Auto-refresh on external edits — save in your editor, the view updates within ~250 ms.
 - Live folder watching — `.md` files and folders added, removed, or renamed on disk
   appear in the tree automatically, no manual *Nachschlag* needed.
