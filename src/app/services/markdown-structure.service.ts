@@ -4,6 +4,7 @@ import type { RecipeContent } from '../models/recipe-content.model';
 import type { RecipeNode } from '../models/recipe-node.model';
 
 const EVENT_RECIPE_CHANGED = 'recipe:changed';
+const EVENT_BREWHOUSE_CHANGED = 'brewhouse:changed';
 const LAST_BREWHOUSE_KEY = 'hopsmd:lastBrewhouse';
 
 /**
@@ -11,10 +12,15 @@ const LAST_BREWHOUSE_KEY = 'hopsmd:lastBrewhouse';
  * (the "Sudhaus"), the currently selected file, and the raw markdown
  * fetched from disk. Pure signals — no RxJS exposed to the UI.
  *
- * Also wires up the filesystem watcher: when a recipe is selected, we ask
- * Rust to watch it via `watch_recipe`, and on every `recipe:changed` event
- * for the currently-selected path we re-read the file so the view stays in
- * sync with whatever editor the user has open.
+ * Also wires up the filesystem watcher. A single recursive watcher in Rust is
+ * bound to the open workspace (`watch_brewhouse`), and we tell it which file is
+ * open via `set_open_recipe`. It pushes two events:
+ *
+ * - `recipe:changed` — the open file's content changed on disk; we re-read it
+ *   via `tap_recipe` so the view stays in sync with whatever editor is open.
+ * - `brewhouse:changed` — a file/folder was added, removed, or renamed; we
+ *   re-scan the tree (silently, only swapping it in when the structure really
+ *   changed — see `rescanTree`).
  */
 @Injectable({ providedIn: 'root' })
 export class MarkdownStructureService {
@@ -40,10 +46,12 @@ export class MarkdownStructureService {
 
   constructor() {
     if (isTauri()) {
-      let unlisten: (() => void) | null = null;
+      const unlisteners: Array<() => void> = [];
       void listenBridge<string>(EVENT_RECIPE_CHANGED, (path) => this.onRecipeChanged(path))
-        .then((fn) => (unlisten = fn));
-      inject(DestroyRef).onDestroy(() => unlisten?.());
+        .then((fn) => unlisteners.push(fn));
+      void listenBridge<unknown>(EVENT_BREWHOUSE_CHANGED, () => void this.rescanTree())
+        .then((fn) => unlisteners.push(fn));
+      inject(DestroyRef).onDestroy(() => unlisteners.forEach((fn) => fn()));
 
       // Auto-open the brewhouse that was active last time we ran. This is
       // decoupled from the favourites list — favourites are a manual
@@ -103,8 +111,8 @@ export class MarkdownStructureService {
   /**
    * Open an arbitrary markdown file by absolute path — used for cross-file
    * links inside the viewer, where the target isn't necessarily the node
-   * the user just clicked in the tree. Same backend round-trip as
-   * `selectRecipe`: tap_recipe + watch_recipe.
+   * the user just clicked in the tree. Reads via `tap_recipe` and tells the
+   * brewhouse watcher which file is now open via `set_open_recipe`.
    */
   async openFileByPath(path: string): Promise<void> {
     this._loading.set(true);
@@ -113,9 +121,9 @@ export class MarkdownStructureService {
     try {
       await this.tap(path);
       try {
-        await invokeBridge<void>('watch_recipe', { path });
+        await invokeBridge<void>('set_open_recipe', { path });
       } catch (err) {
-        this._error.set(`Watcher konnte nicht starten: ${this.describe(err)}`);
+        this._error.set(`Watcher could not start: ${this.describe(err)}`);
       }
     } catch (err) {
       this._selectedContent.set('');
@@ -126,13 +134,17 @@ export class MarkdownStructureService {
     }
   }
 
-  /** Clear current selection (e.g. when switching workspaces). */
+  /**
+   * Clear current selection (e.g. when switching workspaces). The brewhouse
+   * watcher keeps running — only the "open file" pointer is cleared, so tree
+   * changes still flow in.
+   */
   closeRecipe(): void {
     this._selectedPath.set(null);
     this._selectedContent.set('');
     this._lastModified.set(null);
     if (isTauri()) {
-      void invokeBridge<void>('unwatch_recipe').catch(() => undefined);
+      void invokeBridge<void>('set_open_recipe', { path: null }).catch(() => undefined);
     }
   }
 
@@ -168,13 +180,64 @@ export class MarkdownStructureService {
       this._tree.set(tree);
       this._brewhouse.set(tree.path);
       this.writeLastBrewhouse(tree.path);
+      // Start (or replace) the recursive watcher for this workspace so the
+      // tree auto-updates as files come and go. Non-fatal: if it fails the
+      // viewer still works, the tree just won't refresh on its own.
+      try {
+        await invokeBridge<void>('watch_brewhouse', { path: tree.path });
+      } catch (err) {
+        this._error.set(`Folder watching could not start: ${this.describe(err)}`);
+      }
     } catch (err) {
       this._tree.set(null);
       this._brewhouse.set(null);
       this._error.set(this.describe(err));
+      if (isTauri()) {
+        void invokeBridge<void>('unwatch_brewhouse').catch(() => undefined);
+      }
     } finally {
       this._loading.set(false);
     }
+  }
+
+  /**
+   * Re-scan the open workspace after a `brewhouse:changed` event and swap in
+   * the new tree only when its structure actually changed. Editors save
+   * atomically (temp file → rename), which can surface as create/remove
+   * events even for a pure content edit; the fingerprint comparison is the
+   * reliable arbiter so the sidebar never flickers on a plain save.
+   *
+   * Deliberately silent: no `loading` flag, no change to the current
+   * selection. Angular preserves each folder's expanded state and the active
+   * node across the swap because the tree template tracks children by path.
+   */
+  private async rescanTree(): Promise<void> {
+    const root = this._brewhouse();
+    if (!root) return;
+    try {
+      const tree = await invokeBridge<RecipeNode>('open_brewhouse', { path: root });
+      if (this._brewhouse() !== root) return; // raced a workspace switch
+      if (this.treeFingerprint(tree) === this.treeFingerprint(this._tree())) return;
+      this._tree.set(tree);
+    } catch (err) {
+      this._error.set(this.describe(err));
+    }
+  }
+
+  /**
+   * Stable signature of a tree's *structure* (every node's path, in the
+   * already-deterministic scan order). Content and mtimes are irrelevant here
+   * — only which files and folders exist.
+   */
+  private treeFingerprint(node: RecipeNode | null): string {
+    if (!node) return '';
+    const parts: string[] = [];
+    const walk = (n: RecipeNode): void => {
+      parts.push((n.isDir ? 'D:' : 'F:') + n.path);
+      for (const child of n.children) walk(child);
+    };
+    walk(node);
+    return parts.join('\n');
   }
 
   private readLastBrewhouse(): string | null {

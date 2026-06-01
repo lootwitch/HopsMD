@@ -25,6 +25,9 @@ import { TocComponent } from '../toc/toc.component';
  *  enough that the user notices it ticking, cheap enough to ignore. */
 const RELATIVE_TIME_TICK_MS = 5_000;
 
+/** How long the filebar path shows "✓ copied" before reverting to the path. */
+const PATH_COPIED_MS = 1_500;
+
 /**
  * Renders the currently selected markdown file.
  *
@@ -52,7 +55,18 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
     @if (state.selectedPath(); as path) {
       <header class="filebar" [title]="path">
         <span class="filebar-icon">🍺</span>
-        <span class="filebar-path">{{ path }}</span>
+        <button
+          type="button"
+          class="filebar-path"
+          [title]="i18n.t('filebar.copyPath')"
+          (click)="copyPath()"
+        >
+          @if (pathCopied()) {
+            <span class="filebar-copied">{{ i18n.t('filebar.copied') }}</span>
+          } @else {
+            {{ path }}
+          }
+        </button>
         @if (modifiedLabel(); as label) {
           <span class="filebar-sep">·</span>
           <span class="filebar-modified" [title]="modifiedAbsolute()">
@@ -144,6 +158,30 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        /* Reset button chrome — reads like the path text, behaves like a
+           button (click to copy the absolute path). */
+        appearance: none;
+        background: transparent;
+        border: 0;
+        margin: 0;
+        padding: 0.12rem 0.35rem;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .filebar-path:hover {
+        background: rgba(245, 197, 66, 0.1);
+        color: var(--hops-foam);
+      }
+      .filebar-path:focus-visible {
+        outline: 1px solid var(--hops-malt);
+        outline-offset: 1px;
+      }
+      .filebar-copied {
+        color: var(--hops-pilsner);
+        font-weight: 500;
       }
       .filebar-sep {
         color: var(--hops-malt);
@@ -213,6 +251,11 @@ export class MarkdownViewComponent {
 
   /** Ticks every few seconds so the relative-time label refreshes itself. */
   private readonly nowTick = signal<number>(Date.now());
+
+  /** True for a short beat after the path is copied, so the filebar swaps the
+   *  path text for a "✓ copied" confirmation. */
+  protected readonly pathCopied = signal<boolean>(false);
+  private pathCopiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly modifiedLabel = computed<string | null>(() => {
     const mtime = this.state.lastModified();
@@ -291,7 +334,24 @@ export class MarkdownViewComponent {
       () => this.nowTick.set(Date.now()),
       RELATIVE_TIME_TICK_MS,
     );
-    inject(DestroyRef).onDestroy(() => clearInterval(tickId));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(tickId);
+      if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
+    });
+  }
+
+  /**
+   * Copy the open file's absolute path to the clipboard and flash a short
+   * confirmation in the filebar. Mirrors the code-block copy behaviour but
+   * surfaces the result inline (signal-driven) rather than via a tooltip.
+   */
+  protected async copyPath(): Promise<void> {
+    const path = this.state.selectedPath();
+    if (!path) return;
+    if (!(await this.writeClipboard(path))) return;
+    this.pathCopied.set(true);
+    if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
+    this.pathCopiedTimer = setTimeout(() => this.pathCopied.set(false), PATH_COPIED_MS);
   }
 
   /**
@@ -477,23 +537,30 @@ export class MarkdownViewComponent {
 
   private async copySource(block: HTMLElement, button: HTMLElement): Promise<void> {
     const source = decodeBase64(block.dataset['source'] ?? '');
+    if (await this.writeClipboard(source)) this.flashCopied(button);
+  }
+
+  /**
+   * Write `text` to the clipboard, returning whether it succeeded. Prefers the
+   * async Clipboard API and falls back to a hidden-textarea `execCommand`
+   * copy, because some webview configurations block the async API without a
+   * "trusted" user gesture in ways that are hard to predict.
+   */
+  private async writeClipboard(text: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(source);
-      this.flashCopied(button);
+      await navigator.clipboard.writeText(text);
+      return true;
     } catch {
-      // Some webviews block clipboard without user gesture in odd ways.
-      // Fall back to a temp textarea select+copy.
       const textarea = document.createElement('textarea');
-      textarea.value = source;
+      textarea.value = text;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
       textarea.select();
       try {
-        document.execCommand('copy');
-        this.flashCopied(button);
+        return document.execCommand('copy');
       } catch {
-        // give up silently — at least the source view is one click away
+        return false;
       } finally {
         document.body.removeChild(textarea);
       }

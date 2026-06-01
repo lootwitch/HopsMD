@@ -20,6 +20,8 @@ and to a properly poured pint of beer.
 - View any `.md` file with full rendering: GitHub-flavoured Markdown, syntax-highlighted
   code, locally-resolved images, and **live MermaidJS diagrams**.
 - Auto-refresh on external edits — save in your editor, the view updates within ~250 ms.
+- Live folder watching — `.md` files and folders added, removed, or renamed on disk
+  appear in the tree automatically, no manual *Nachschlag* needed.
 - "Aktualisiert vor X" badge keeps you honest about how stale the open file is.
 - Mermaid syntax errors surface as a `<pre>` inside the affected diagram container —
   one bad batch never ruins the whole brew.
@@ -72,7 +74,7 @@ installer directly: grab it from
 | Markdown    | [`marked`](https://marked.js.org) with a custom renderer        |
 | Diagrams    | [`mermaid`](https://mermaid.js.org) v11, lazy-loaded             |
 | Sanitizer   | `DOMPurify` (output then re-trusted for Angular's `[innerHTML]`)|
-| Watcher     | [`notify-debouncer-mini`](https://crates.io/crates/notify-debouncer-mini) — 250 ms debounce |
+| Watcher     | [`notify-debouncer-full`](https://crates.io/crates/notify-debouncer-full) — one recursive watch per workspace, 250 ms debounce |
 | Installer   | NSIS + MSI (WiX 3) via `cargo tauri build`                       |
 | Updater     | `tauri-plugin-updater` + ed25519 signatures (feature-gated)      |
 

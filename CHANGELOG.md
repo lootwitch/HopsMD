@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The open workspace (the **Sudhaus**) is now watched live: `.md` files and
+  folders added, removed, or renamed on disk appear in the recipe-book tree
+  automatically, without a manual *Nachschlag* (~250 ms debounce). The previous
+  single-file watcher was replaced by **one** recursive watcher bound to the
+  brewhouse lifecycle (`notify-debouncer-full` instead of `-mini`). Expanded
+  state and selection are preserved across the refresh; a plain content save of
+  the open file still triggers only a content reload, not a tree re-scan.
+- Clicking the file path in the top bar copies the absolute path to the
+  clipboard and briefly confirms with "✓ Path copied".
+- Settings page (`#/settings`) with an Appearance section: colour theme presets
+  (Brewpub Dark / Pilsner Light / High Contrast) plus per-token fine-tuning,
+  body/mono fonts, text size, and language — all saved automatically.
+
 ## [1.0.0] - 2026-05-19
 
 Promotion to 1.0 — no functional changes vs. 0.1.1. Phase 1

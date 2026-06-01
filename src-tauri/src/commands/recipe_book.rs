@@ -37,8 +37,10 @@ const ASSET_FOLDER_HINTS: &[&str] = &[
     "screenshots",
 ];
 
-/// Folders we never descend into — pure noise inside a docs tree.
-const IGNORED_DIR_NAMES: &[&str] = &[
+/// Folders we never descend into — pure noise inside a docs tree. Shared with
+/// the watcher, which filters out filesystem events under these directories so
+/// `node_modules`/`.git` churn never triggers a tree re-scan.
+pub(crate) const IGNORED_DIR_NAMES: &[&str] = &[
     ".git",
     ".hg",
     ".svn",
@@ -297,7 +299,7 @@ fn consume_digits<I: Iterator<Item = char>>(iter: &mut std::iter::Peekable<I>) -
     n
 }
 
-fn is_markdown(path: &Path) -> bool {
+pub(crate) fn is_markdown(path: &Path) -> bool {
     let ext = extension_of(path);
     MARKDOWN_EXTENSIONS.iter().any(|m| m.eq_ignore_ascii_case(&ext))
 }
@@ -306,6 +308,18 @@ fn is_ignored_dir(name: &str) -> bool {
     IGNORED_DIR_NAMES
         .iter()
         .any(|ignored| ignored.eq_ignore_ascii_case(name))
+}
+
+/// True if any component of `path` is an ignored directory name. Used by the
+/// watcher to drop events that bubble up from `node_modules`, `.git`, etc.,
+/// since a recursive notify watch sees them but the tree scan never shows them.
+pub(crate) fn is_under_ignored_dir(path: &Path) -> bool {
+    path.components().any(|c| match c {
+        std::path::Component::Normal(os) => {
+            os.to_str().is_some_and(is_ignored_dir)
+        }
+        _ => false,
+    })
 }
 
 fn extension_of(path: &Path) -> String {

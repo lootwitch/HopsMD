@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { UpdaterService } from '../../services/updater.service';
@@ -6,6 +7,7 @@ import { UpdaterService } from '../../services/updater.service';
 @Component({
   selector: 'hops-brewery-toolbar',
   standalone: true,
+  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="toolbar">
@@ -47,6 +49,13 @@ import { UpdaterService } from '../../services/updater.service';
             }
           </button>
         }
+        <a
+          class="btn ghost icon"
+          routerLink="/settings"
+          [title]="i18n.t('toolbar.settings')"
+        >
+          ⚙
+        </a>
         <button
           type="button"
           class="btn locale"
@@ -175,6 +184,15 @@ import { UpdaterService } from '../../services/updater.service';
       .btn.ghost:hover:not(:disabled) {
         border-color: var(--hops-pilsner);
         color: var(--hops-foam);
+      }
+      .btn.ghost.icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.95rem;
+        line-height: 1;
       }
       .btn.locale {
         background: transparent;

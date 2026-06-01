@@ -26,6 +26,7 @@ const EN = {
   'toolbar.refresh': 'Refill',
   'toolbar.refreshTooltip': 'Refill — re-scan directory',
   'toolbar.toggleLocale': 'Switch language',
+  'toolbar.settings': 'Settings',
 
   // -- favourites panel --
   'favorites.title': 'Brewhouses',
@@ -47,6 +48,33 @@ const EN = {
   'view.welcomeHint':
     'Tip: HopsMD understands GitHub-flavoured Markdown and live-rendered Mermaid diagrams.',
   'view.modifiedPrefix': 'Updated',
+  'filebar.copyPath': 'Copy path',
+  'filebar.copied': '✓ Path copied',
+
+  // -- settings page --
+  'settings.title': 'Settings',
+  'settings.close': 'Close',
+  'settings.section.appearance': 'Appearance',
+  'settings.theme.presets': 'Theme presets',
+  'settings.preset.brewpubDark': 'Brewpub Dark',
+  'settings.preset.pilsnerHell': 'Pilsner Light',
+  'settings.preset.hoherKontrast': 'High Contrast',
+  'settings.colors.heading': 'Colours',
+  'settings.colors.accent': 'Accent colour',
+  'settings.colors.advanced': 'Advanced: all colours',
+  'settings.fonts.heading': 'Fonts',
+  'settings.fonts.body': 'Body font',
+  'settings.fonts.mono': 'Monospace font',
+  'settings.fonts.placeholder': 'Font stack (CSS)',
+  'settings.textSize.heading': 'Text size',
+  'settings.language.heading': 'Language',
+  'settings.reset': 'Reset',
+  'settings.resetAll': 'Reset theme',
+  'settings.autoSaved': 'Changes are saved automatically.',
+  'settings.preview.heading': 'Preview',
+  'settings.preview.body':
+    'The quick brown fox jumps over the lazy dog. Here is a {link} and some inline code.',
+  'settings.preview.link': 'link',
 
   // -- relative time --
   'time.justNow': 'just now',
@@ -112,6 +140,7 @@ const DE: Record<TranslationKey, string> = {
   'toolbar.refresh': 'Nachschlag',
   'toolbar.refreshTooltip': 'Nachschlag — Verzeichnis neu einlesen',
   'toolbar.toggleLocale': 'Sprache wechseln',
+  'toolbar.settings': 'Einstellungen',
 
   'favorites.title': 'Sudhause',
   'favorites.unpinTooltip': 'Vom Stammsudhaus-Pin lösen',
@@ -131,6 +160,32 @@ const DE: Record<TranslationKey, string> = {
   'view.welcomeHint':
     'Tipp: HopsMD versteht GitHub-Markdown und live gerenderte Mermaid-Diagramme.',
   'view.modifiedPrefix': 'Aktualisiert',
+  'filebar.copyPath': 'Pfad kopieren',
+  'filebar.copied': '✓ Pfad kopiert',
+
+  'settings.title': 'Einstellungen',
+  'settings.close': 'Schließen',
+  'settings.section.appearance': 'Darstellung',
+  'settings.theme.presets': 'Themen-Vorlagen',
+  'settings.preset.brewpubDark': 'Brewpub Dunkel',
+  'settings.preset.pilsnerHell': 'Pilsner Hell',
+  'settings.preset.hoherKontrast': 'Hoher Kontrast',
+  'settings.colors.heading': 'Farben',
+  'settings.colors.accent': 'Akzentfarbe',
+  'settings.colors.advanced': 'Erweitert: alle Farben',
+  'settings.fonts.heading': 'Schriftarten',
+  'settings.fonts.body': 'Fließtext-Schrift',
+  'settings.fonts.mono': 'Monospace-Schrift',
+  'settings.fonts.placeholder': 'Schrift-Stack (CSS)',
+  'settings.textSize.heading': 'Textgröße',
+  'settings.language.heading': 'Sprache',
+  'settings.reset': 'Zurücksetzen',
+  'settings.resetAll': 'Thema zurücksetzen',
+  'settings.autoSaved': 'Änderungen werden automatisch gespeichert.',
+  'settings.preview.heading': 'Vorschau',
+  'settings.preview.body':
+    'Franz jagt im komplett verwahrlosten Taxi quer durch Bayern. Hier ein {link} und etwas Inline-Code.',
+  'settings.preview.link': 'Link',
 
   'time.justNow': 'gerade aktualisiert',
   'time.secondsAgo': 'vor {n} Sek.',
