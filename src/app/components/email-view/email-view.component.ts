@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 import type { EmailContent } from '../../models/email-content.model';
+import { openUrlBridge } from '../../core/tauri-bridge';
 import { I18nService } from '../../services/i18n.service';
 
 /** Read-only email viewer: header card + sanitised HTML body (or text body
@@ -27,7 +28,7 @@ import { I18nService } from '../../services/i18n.service';
           </div>
         }
         @if (safeBody(); as body) {
-          <div class="body html" [innerHTML]="body"></div>
+          <div class="body html" [innerHTML]="body" (click)="onBodyClick($event)"></div>
         } @else {
           <pre class="body text">{{ m.textBody }}</pre>
         }
@@ -65,4 +66,16 @@ export class EmailViewComponent {
     const clean = DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
     return this.sanitizer.bypassSecurityTrustHtml(clean);
   });
+
+  /** Route links inside the email body through the system browser instead of
+   *  letting them navigate the whole webview away. */
+  protected onBodyClick(event: Event): void {
+    const link = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
+    if (!link) return;
+    const href = link.getAttribute('href');
+    event.preventDefault();
+    if (href && /^(https?|mailto|tel):/i.test(href)) {
+      void openUrlBridge(href);
+    }
+  }
 }

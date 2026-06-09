@@ -444,6 +444,10 @@ export class MarkdownViewComponent {
       const content = this.state.selectedContent();
       const path = this.state.selectedPath();
       this.i18n.locale(); // tracked dependency, used inside parser
+      if (this.state.selectedKind() !== 'markdown') {
+        this.html.set(null);
+        return;
+      }
       if (!content) {
         this.html.set(null);
         return;

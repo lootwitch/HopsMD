@@ -52,6 +52,7 @@ export class MarkdownStructureService {
   private readonly _selectedKind = signal<FileKind>('markdown');
   private readonly _selectedEmail = signal<EmailContent | null>(null);
   private readonly _selectedImageUrl = signal<string | null>(null);
+  private readonly _imageReloadCounter = signal<number>(0);
 
   // --- public read-only views ---
   readonly brewhouse = this._brewhouse.asReadonly();
@@ -320,8 +321,10 @@ export class MarkdownStructureService {
       return;
     }
     if (kind === 'image') {
+      this._imageReloadCounter.update((n) => n + 1);
+      const token = this._imageReloadCounter();
       void toAssetUrl(path).then((u) => {
-        if (path === this._selectedPath()) this._selectedImageUrl.set(`${u}?t=${this._lastModified() ?? ''}`);
+        if (path === this._selectedPath()) this._selectedImageUrl.set(`${u}?t=${token}`);
       });
       return;
     }

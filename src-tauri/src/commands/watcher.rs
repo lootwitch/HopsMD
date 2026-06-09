@@ -27,7 +27,7 @@ use notify_debouncer_full::notify::{EventKind, RecommendedWatcher, RecursiveMode
 use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, FileIdMap};
 use tauri::{AppHandle, Emitter, State};
 
-use super::recipe_book::{is_markdown, is_under_ignored_dir, CommandError};
+use super::recipe_book::{is_viewable, is_under_ignored_dir, CommandError};
 
 /// Webview event: the open file's content changed. Payload: absolute path.
 pub const EVENT_RECIPE_CHANGED: &str = "recipe:changed";
@@ -166,13 +166,13 @@ fn is_structural_kind(kind: EventKind) -> bool {
 }
 
 /// Whether a structural event on this path could change the rendered tree: it
-/// targets a markdown file, an existing directory, or a now-gone path with no
-/// extension (a removed/renamed-away folder). Editor temp files (`*.md.tmp`,
-/// `*.swp`, …) carry a non-markdown extension and are filtered out here. The
-/// frontend's structural fingerprint is the final arbiter, so over-emitting is
-/// harmless — this just trims the obvious noise.
+/// targets any viewable file (markdown/text/email/image), an existing
+/// directory, or a now-gone path with no extension (a removed/renamed-away
+/// folder). Editor temp files (`*.md.tmp`, `*.swp`, …) are not viewable and
+/// are filtered out here. The frontend's structural fingerprint is the final
+/// arbiter, so over-emitting is harmless — this just trims the obvious noise.
 fn looks_structural(path: &Path) -> bool {
-    is_markdown(path) || path.is_dir() || (!path.exists() && path.extension().is_none())
+    is_viewable(path) || path.is_dir() || (!path.exists() && path.extension().is_none())
 }
 
 fn drop_current(watcher: &BrewhouseWatcher) {
@@ -224,6 +224,9 @@ mod tests {
         assert!(!looks_structural(Path::new("/docs/.guide.md.swp")));
         // A vanished, extensionless path (a removed/renamed-away folder) counts.
         assert!(looks_structural(Path::new("/docs/chapter-3")));
+        // Other viewable kinds (text, image) also qualify.
+        assert!(looks_structural(Path::new("/docs/note.txt")));
+        assert!(looks_structural(Path::new("/docs/photo.png")));
     }
 
     #[test]
