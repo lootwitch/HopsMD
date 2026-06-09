@@ -13,13 +13,34 @@ A lightweight, local-first Markdown & Mermaid viewer built on **Tauri v2** + **A
 HopsMD is a side project of the **CloudBrew** family — a small love letter to documentation
 and to a properly poured pint of beer.
 
-## What it does (Phase 1 — Read Only)
+## What it does (Phase 2 — Read, Edit & View)
 
 - Pick a local folder (the **Sudhaus / Brewhouse**) via the native Tauri file dialog.
 - Browse the recursive Markdown tree (the **Rezeptbuch / Recipe Book**) in a left sidebar.
-- View any `.md` file with full rendering: GitHub-flavoured Markdown, syntax-highlighted
-  code, locally-resolved images, and **live MermaidJS diagrams**.
+- View any `.md` file with full rendering: GitHub-flavoured Markdown, **syntax-highlighted
+  code** (highlight.js, lazy-loaded), locally-resolved images, and **live MermaidJS
+  diagrams** — plus **math** (KaTeX inline & display), **footnotes**, **admonitions /
+  callouts** (NOTE / TIP / IMPORTANT / WARNING / CAUTION), **task lists**, **emoji
+  shortcodes**, **definition lists**, and **wiki-links** (`[[Page]]` / `[[Page|label]]`).
+- **Edit any `.md` file** — press **Ctrl+E**, double-click the article, or click the
+  ✎ button to open a **CodeMirror 6** source editor with Markdown syntax highlighting.
+  Save with **Ctrl+S** (or the *Save* button); the file is written atomically and the
+  view switches back to the rendered article instantly.
+- **Tree file operations** — right-click a node to create a new file or folder, rename
+  (inline input), or delete (with confirmation). The tree refreshes automatically.
+- **More than Markdown** — the tree also lists and opens **plain-text** files
+  (`.txt` / `.text` / `.log`, shown verbatim and editable like Markdown), **emails**
+  (`.eml` / `.msg` — read-only header card + sanitised HTML or text body + attachment
+  names), and **common images** (`.png` / `.jpg` / `.gif` / `.svg` / `.webp` / `.bmp` /
+  `.avif` / `.ico`, fit-to-view with dimensions). HTML mail bodies are sanitised and the
+  app's CSP blocks all remote content, so nothing phones home.
+- **Theming & settings** — a Settings page (`#/settings`) with three colour presets
+  (Brewpub Dark / Pilsner Light / High Contrast) plus per-token fine-tuning, body/mono
+  fonts, text size, and DE/EN language — all persisted. A one-click theme switcher
+  (☀️ / 🌙 / ◐) and the language toggle live in the top bar.
 - Auto-refresh on external edits — save in your editor, the view updates within ~250 ms.
+- Live folder watching — `.md` files and folders added, removed, or renamed on disk
+  appear in the tree automatically, no manual *Nachschlag* needed.
 - "Aktualisiert vor X" badge keeps you honest about how stale the open file is.
 - Mermaid syntax errors surface as a `<pre>` inside the affected diagram container —
   one bad batch never ruins the whole brew.
@@ -70,9 +91,11 @@ installer directly: grab it from
 | Shell       | Tauri v2 (Rust) — minimal: filesystem bridge only               |
 | UI          | Angular 21 — standalone components, signals everywhere          |
 | Markdown    | [`marked`](https://marked.js.org) with a custom renderer        |
+| Editor      | [CodeMirror 6](https://codemirror.net) — lazy-loaded source editor for text/Markdown |
 | Diagrams    | [`mermaid`](https://mermaid.js.org) v11, lazy-loaded             |
+| Email       | [`mail-parser`](https://crates.io/crates/mail-parser) (`.eml`) + [`msg_parser`](https://crates.io/crates/msg_parser) (`.msg`) |
 | Sanitizer   | `DOMPurify` (output then re-trusted for Angular's `[innerHTML]`)|
-| Watcher     | [`notify-debouncer-mini`](https://crates.io/crates/notify-debouncer-mini) — 250 ms debounce |
+| Watcher     | [`notify-debouncer-full`](https://crates.io/crates/notify-debouncer-full) — one recursive watch per workspace, 250 ms debounce |
 | Installer   | NSIS + MSI (WiX 3) via `cargo tauri build`                       |
 | Updater     | `tauri-plugin-updater` + ed25519 signatures (feature-gated)      |
 
@@ -82,12 +105,12 @@ installer directly: grab it from
 HopsMD/
 ├── src/                  # Angular workspace (the Schankraum / tap room)
 │   └── app/
-│       ├── services/     # MarkdownStructure, MarkdownParser, MermaidRender, Updater
-│       ├── components/   # FileTree, MarkdownView, BreweryToolbar
-│       ├── core/         # tauri-bridge, path-utils
+│       ├── services/     # MarkdownStructure, MarkdownParser, MermaidRender, ColorTheme, Updater
+│       ├── components/   # FileTree, MarkdownView, MarkdownEditor, EmailView, ImageView, SettingsPage, BreweryToolbar
+│       ├── core/         # tauri-bridge, file-kind, path-utils, markdown-extensions
 │       └── models/
 ├── src-tauri/            # Tauri / Rust shell (the Braukessel / brew kettle)
-│   ├── src/commands/     # recipe_book.rs (file tree + read), watcher.rs
+│   ├── src/commands/     # recipe_book.rs (tree + read/write), email.rs (.eml/.msg), watcher.rs
 │   ├── capabilities/
 │   └── tauri.conf.json
 ├── winget/               # winget-pkgs manifest templates

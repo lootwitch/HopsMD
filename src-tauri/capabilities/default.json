@@ -6,6 +6,8 @@
   "permissions": [
     "core:default",
     "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
     "core:webview:default",
     "core:event:default",
     "core:path:default",
@@ -25,7 +27,9 @@
       "identifier": "opener:allow-open-url",
       "allow": [
         { "url": "http://**" },
-        { "url": "https://**" }
+        { "url": "https://**" },
+        { "url": "mailto:*" },
+        { "url": "tel:*" }
       ]
     }
   ]

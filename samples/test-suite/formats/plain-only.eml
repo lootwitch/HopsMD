@@ -1,0 +1,14 @@
+From: Braumeister <maester@example.com>
+To: Tester <you@example.com>
+Subject: Nur-Text-Mail (kein HTML)
+Date: Mon, 09 Jun 2026 09:30:00 +0000
+Content-Type: text/plain; charset=utf-8
+
+Diese E-Mail hat ausschliesslich einen Text-Body und keinen HTML-Teil.
+
+Der Viewer muss hier auf die <pre>-Text-Darstellung zurueckfallen
+(monospace), die Header-Karte bleibt gleich. Umlaute wie Wuerze und
+Maerzen sollten korrekt erscheinen.
+
+--
+Prost, der Braumeister

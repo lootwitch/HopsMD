@@ -24,21 +24,52 @@ const MAX_DEPTH: usize = 16;
 /// Extensions counted as "markdown" — show up in the tree as recipes.
 const MARKDOWN_EXTENSIONS: &[&str] = &["md", "markdown", "mdx"];
 
-/// Folders we always show even if they contain no markdown, because they
-/// typically hold images / diagrams referenced by the surrounding docs.
-const ASSET_FOLDER_HINTS: &[&str] = &[
-    "assets",
-    "images",
-    "img",
-    "media",
-    "attachments",
-    "figures",
-    "diagrams",
-    "screenshots",
-];
+const TEXT_EXTENSIONS: &[&str] = &["txt", "text", "log"];
+const EMAIL_EXTENSIONS: &[&str] = &["eml", "msg"];
+const IMAGE_EXTENSIONS: &[&str] =
+    &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "ico"];
 
-/// Folders we never descend into — pure noise inside a docs tree.
-const IGNORED_DIR_NAMES: &[&str] = &[
+/// Coarse classification of a file by extension. Drives which read path and
+/// which frontend viewer a file gets. Mirrored in `core/file-kind.ts`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileKind {
+    Markdown,
+    Text,
+    Email,
+    Image,
+    Unsupported,
+}
+
+pub(crate) fn kind_of(path: &Path) -> FileKind {
+    let ext = extension_of(path);
+    let any = |set: &[&str]| set.iter().any(|m| m.eq_ignore_ascii_case(&ext));
+    if any(MARKDOWN_EXTENSIONS) {
+        FileKind::Markdown
+    } else if any(TEXT_EXTENSIONS) {
+        FileKind::Text
+    } else if any(EMAIL_EXTENSIONS) {
+        FileKind::Email
+    } else if any(IMAGE_EXTENSIONS) {
+        FileKind::Image
+    } else {
+        FileKind::Unsupported
+    }
+}
+
+/// A file the tree should show and the app can open in some viewer.
+pub(crate) fn is_viewable(path: &Path) -> bool {
+    kind_of(path) != FileKind::Unsupported
+}
+
+/// A file we read as UTF-8 text (markdown + plain text) — editable kinds.
+pub(crate) fn is_text_readable(path: &Path) -> bool {
+    matches!(kind_of(path), FileKind::Markdown | FileKind::Text)
+}
+
+/// Folders we never descend into — pure noise inside a docs tree. Shared with
+/// the watcher, which filters out filesystem events under these directories so
+/// `node_modules`/`.git` churn never triggers a tree re-scan.
+pub(crate) const IGNORED_DIR_NAMES: &[&str] = &[
     ".git",
     ".hg",
     ".svn",
@@ -94,8 +125,12 @@ pub enum CommandError {
     Io(#[from] std::io::Error),
     #[error("Datei enthält ungültiges UTF-8")]
     InvalidUtf8,
+    #[error("Pfad existiert bereits: {0}")]
+    AlreadyExists(String),
     #[error("Watcher-Fehler: {0}")]
     Watch(String),
+    #[error("E-Mail konnte nicht gelesen werden: {0}")]
+    EmailParse(String),
 }
 
 impl serde::Serialize for CommandError {
@@ -136,7 +171,7 @@ pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
     if !p.is_file() {
         return Err(CommandError::NotAFile(path));
     }
-    if !is_markdown(&p) {
+    if !is_text_readable(&p) {
         return Err(CommandError::NotMarkdown(path));
     }
     let meta = fs::metadata(&p)?;
@@ -144,11 +179,113 @@ pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
         return Err(CommandError::TooLarge { size: meta.len() });
     }
     let bytes = fs::read(&p)?;
-    let content = String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)?;
+    let content = strip_bom(String::from_utf8(bytes).map_err(|_| CommandError::InvalidUtf8)?);
     Ok(RecipeContent {
         content,
         modified_at: modified_at_epoch_ms(&meta),
     })
+}
+
+#[tauri::command]
+pub fn save_recipe(path: String, content: String) -> Result<(), CommandError> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(CommandError::NotFound(path));
+    }
+    if !p.is_file() {
+        return Err(CommandError::NotAFile(path));
+    }
+    if !is_text_readable(&p) {
+        return Err(CommandError::NotMarkdown(path));
+    }
+    if content.len() as u64 > MAX_FILE_SIZE {
+        return Err(CommandError::TooLarge { size: content.len() as u64 });
+    }
+    atomic_write(&p, &content)?;
+    Ok(())
+}
+
+/// Reject names that are empty, contain path separators, or are `.`/`..`.
+fn is_safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains('/')
+        && !name.contains('\\')
+}
+
+#[tauri::command]
+pub fn create_recipe(dir: String, name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&name) {
+        return Err(CommandError::NotAFile(name));
+    }
+    let d = PathBuf::from(&dir);
+    if !d.is_dir() {
+        return Err(CommandError::NotADirectory(dir));
+    }
+    let file_name = if name.to_ascii_lowercase().ends_with(".md") {
+        name.clone()
+    } else {
+        format!("{name}.md")
+    };
+    let target = d.join(&file_name);
+    if target.exists() {
+        return Err(CommandError::AlreadyExists(target.to_string_lossy().into_owned()));
+    }
+    let stem = target.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    fs::write(&target, format!("# {stem}\n"))?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn create_folder(dir: String, name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&name) {
+        return Err(CommandError::NotADirectory(name));
+    }
+    let target = PathBuf::from(&dir).join(&name);
+    if target.exists() {
+        return Err(CommandError::AlreadyExists(target.to_string_lossy().into_owned()));
+    }
+    fs::create_dir(&target)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn rename_path(from: String, to_name: String) -> Result<String, CommandError> {
+    if !is_safe_name(&to_name) {
+        return Err(CommandError::NotAFile(to_name));
+    }
+    let src = PathBuf::from(&from);
+    if !src.exists() {
+        return Err(CommandError::NotFound(from));
+    }
+    let parent = src.parent().ok_or_else(|| CommandError::NotFound(from.clone()))?;
+    // Preserve a markdown extension on files when the user omits it.
+    let final_name = if src.is_file() && is_markdown(&src) && !to_name.to_ascii_lowercase().ends_with(".md") {
+        format!("{to_name}.md")
+    } else {
+        to_name.clone()
+    };
+    let dest = parent.join(&final_name);
+    if dest.exists() {
+        return Err(CommandError::AlreadyExists(dest.to_string_lossy().into_owned()));
+    }
+    fs::rename(&src, &dest)?;
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn delete_path(path: String) -> Result<(), CommandError> {
+    let p = PathBuf::from(&path);
+    if !p.exists() {
+        return Err(CommandError::NotFound(path));
+    }
+    if p.is_dir() {
+        fs::remove_dir_all(&p)?;
+    } else {
+        fs::remove_file(&p)?;
+    }
+    Ok(())
 }
 
 fn modified_at_epoch_ms(meta: &fs::Metadata) -> Option<i64> {
@@ -201,15 +338,13 @@ fn scan(dir: &Path, depth: usize) -> Option<RecipeNode> {
                 continue;
             }
             if let Some(sub) = scan(&path, depth + 1) {
-                let is_asset_hint = ASSET_FOLDER_HINTS
-                    .iter()
-                    .any(|h| h.eq_ignore_ascii_case(&name));
-                if !sub.children.is_empty() || is_asset_hint {
-                    children.push(sub);
-                }
+                // Show every non-ignored folder, including empty ones: a folder
+                // the user just created has no children yet but must appear in
+                // the tree immediately. (Noise dirs are already skipped above.)
+                children.push(sub);
             }
         } else if file_type.is_file() {
-            if !is_markdown(&path) {
+            if !is_viewable(&path) {
                 continue;
             }
             children.push(RecipeNode {
@@ -297,7 +432,7 @@ fn consume_digits<I: Iterator<Item = char>>(iter: &mut std::iter::Peekable<I>) -
     n
 }
 
-fn is_markdown(path: &Path) -> bool {
+pub(crate) fn is_markdown(path: &Path) -> bool {
     let ext = extension_of(path);
     MARKDOWN_EXTENSIONS.iter().any(|m| m.eq_ignore_ascii_case(&ext))
 }
@@ -306,6 +441,18 @@ fn is_ignored_dir(name: &str) -> bool {
     IGNORED_DIR_NAMES
         .iter()
         .any(|ignored| ignored.eq_ignore_ascii_case(name))
+}
+
+/// True if any component of `path` is an ignored directory name. Used by the
+/// watcher to drop events that bubble up from `node_modules`, `.git`, etc.,
+/// since a recursive notify watch sees them but the tree scan never shows them.
+pub(crate) fn is_under_ignored_dir(path: &Path) -> bool {
+    path.components().any(|c| match c {
+        std::path::Component::Normal(os) => {
+            os.to_str().is_some_and(is_ignored_dir)
+        }
+        _ => false,
+    })
 }
 
 fn extension_of(path: &Path) -> String {
@@ -319,4 +466,132 @@ fn file_name(path: &Path) -> String {
     path.file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
+/// Write `content` to `path` atomically: write a sibling temp file on the same
+/// filesystem, then rename it onto the target. Keeps the watcher seeing a single
+/// event and avoids a half-written file on crash.
+fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    let tmp = path.with_extension("hopsmd-tmp");
+    fs::write(&tmp, content.as_bytes())?;
+    fs::rename(&tmp, path)
+}
+
+/// Remove a leading UTF-8 BOM (`\u{feff}`) if present.  Some editors (notably
+/// Windows Notepad and certain CI toolchains) prepend a BOM even to UTF-8
+/// files; marked trips on it and renders a stray `ï»¿` at the top of the page.
+pub(crate) fn strip_bom(mut s: String) -> String {
+    if s.starts_with('\u{feff}') {
+        s.drain(..'\u{feff}'.len_utf8());
+    }
+    s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{atomic_write, is_safe_name, strip_bom};
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn kind_of_classifies_extensions() {
+        use super::FileKind::*;
+        assert_eq!(super::kind_of(Path::new("a.md")), Markdown);
+        assert_eq!(super::kind_of(Path::new("a.markdown")), Markdown);
+        assert_eq!(super::kind_of(Path::new("a.txt")), Text);
+        assert_eq!(super::kind_of(Path::new("a.LOG")), Text);
+        assert_eq!(super::kind_of(Path::new("a.eml")), Email);
+        assert_eq!(super::kind_of(Path::new("a.MSG")), Email);
+        assert_eq!(super::kind_of(Path::new("a.png")), Image);
+        assert_eq!(super::kind_of(Path::new("a.jpeg")), Image);
+        assert_eq!(super::kind_of(Path::new("a.exe")), Unsupported);
+        assert_eq!(super::kind_of(Path::new("a")), Unsupported);
+    }
+
+    #[test]
+    fn is_viewable_matches_known_kinds() {
+        assert!(super::is_viewable(Path::new("a.md")));
+        assert!(super::is_viewable(Path::new("a.txt")));
+        assert!(super::is_viewable(Path::new("a.eml")));
+        assert!(super::is_viewable(Path::new("a.webp")));
+        assert!(!super::is_viewable(Path::new("a.zip")));
+    }
+
+    #[test]
+    fn is_text_readable_is_markdown_and_text_only() {
+        assert!(super::is_text_readable(Path::new("a.md")));
+        assert!(super::is_text_readable(Path::new("a.txt")));
+        assert!(!super::is_text_readable(Path::new("a.eml")));
+        assert!(!super::is_text_readable(Path::new("a.png")));
+    }
+
+    #[test]
+    fn atomic_write_replaces_file_contents() {
+        let dir = std::env::temp_dir().join("hopsmd_test_atomic");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.md");
+        fs::write(&f, "old").unwrap();
+        atomic_write(&f, "new content").unwrap();
+        assert_eq!(fs::read_to_string(&f).unwrap(), "new content");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn safe_name_rejects_traversal() {
+        assert!(is_safe_name("note.md"));
+        assert!(!is_safe_name(""));
+        assert!(!is_safe_name(".."));
+        assert!(!is_safe_name("a/b"));
+        assert!(!is_safe_name("a\\b"));
+    }
+
+    #[test]
+    fn tap_reads_plain_text_files() {
+        let dir = std::env::temp_dir().join("hopsmd_test_tap_text");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.txt");
+        fs::write(&f, "plain text body").unwrap();
+        let out = super::tap_recipe(f.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(out.content, "plain text body");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tap_rejects_email_and_image() {
+        let dir = std::env::temp_dir().join("hopsmd_test_tap_reject");
+        let _ = fs::create_dir_all(&dir);
+        let eml = dir.join("m.eml");
+        fs::write(&eml, "From: a@b\n\nhi").unwrap();
+        assert!(super::tap_recipe(eml.to_string_lossy().into_owned()).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn save_writes_plain_text_files() {
+        let dir = std::env::temp_dir().join("hopsmd_test_save_text");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.txt");
+        fs::write(&f, "old").unwrap();
+        super::save_recipe(f.to_string_lossy().into_owned(), "new".into()).unwrap();
+        assert_eq!(fs::read_to_string(&f).unwrap(), "new");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn strips_leading_bom_only() {
+        // BOM at the start is removed.
+        let with_bom = "\u{feff}# Hello\nworld".to_string();
+        assert_eq!(strip_bom(with_bom), "# Hello\nworld");
+
+        // String without BOM is unchanged.
+        let no_bom = "# Hello\nworld".to_string();
+        assert_eq!(strip_bom(no_bom), "# Hello\nworld");
+
+        // BOM in the middle is NOT removed.
+        let mid_bom = "Hello\u{feff}world".to_string();
+        assert_eq!(strip_bom(mid_bom.clone()), mid_bom);
+
+        // Empty string is unchanged.
+        assert_eq!(strip_bom(String::new()), "");
+    }
 }

@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  HostListener,
   afterRenderEffect,
   computed,
   effect,
@@ -19,11 +20,18 @@ import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
+import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { TocComponent } from '../toc/toc.component';
+import { EmailViewComponent } from '../email-view/email-view.component';
+import { ImageViewComponent } from '../image-view/image-view.component';
+import { classify } from '../../core/file-kind';
 
 /** How often the "Updated X ago" label re-evaluates. 5 s is fine-grained
  *  enough that the user notices it ticking, cheap enough to ignore. */
 const RELATIVE_TIME_TICK_MS = 5_000;
+
+/** How long the filebar path shows "✓ copied" before reverting to the path. */
+const PATH_COPIED_MS = 1_500;
 
 /**
  * Renders the currently selected markdown file.
@@ -40,7 +48,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 @Component({
   selector: 'hops-markdown-view',
   standalone: true,
-  imports: [TocComponent],
+  imports: [TocComponent, MarkdownEditorComponent, EmailViewComponent, ImageViewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state.error(); as err) {
@@ -52,13 +60,33 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
     @if (state.selectedPath(); as path) {
       <header class="filebar" [title]="path">
         <span class="filebar-icon">🍺</span>
-        <span class="filebar-path">{{ path }}</span>
+        <button
+          type="button"
+          class="filebar-path"
+          [title]="i18n.t('filebar.copyPath')"
+          (click)="copyPath()"
+        >
+          @if (pathCopied()) {
+            <span class="filebar-copied">{{ i18n.t('filebar.copied') }}</span>
+          } @else {
+            {{ path }}
+          }
+        </button>
         @if (modifiedLabel(); as label) {
           <span class="filebar-sep">·</span>
           <span class="filebar-modified" [title]="modifiedAbsolute()">
             {{ i18n.t('view.modifiedPrefix') }} {{ label }}
           </span>
         }
+        <span class="filebar-actions">
+          @if (state.dirty()) { <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span> }
+          @if (state.mode() === 'viewing' && state.selectedPath() && state.editable()) {
+            <button type="button" class="fbtn" (click)="enterEdit()" [title]="i18n.t('edit.enter')">✎</button>
+          } @else if (state.mode() === 'editing') {
+            <button type="button" class="fbtn primary" (click)="save()">{{ i18n.t('edit.save') }}</button>
+            <button type="button" class="fbtn" (click)="cancel()">{{ i18n.t('edit.cancel') }}</button>
+          }
+        </span>
       </header>
     }
 
@@ -79,37 +107,92 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
       </div>
     }
 
-    <div class="view-grid" [hidden]="!html()">
-      <article
-        #host
-        class="hops-markdown"
-        [innerHTML]="html()"
-        (click)="onContentClick($event)"
-      ></article>
-      @if (toc().length > 0) {
-        <aside class="toc-pane">
-          <hops-toc
-            [items]="toc()"
-            [collapsed]="tocCollapsed()"
-            (itemSelected)="scrollToHeading($event)"
-            (collapseToggled)="onTocToggle()"
-          />
-        </aside>
+    @if (state.mode() === 'editing') {
+      <div class="editor-container">
+        @if (state.externalConflict()) {
+          <section class="banner banner-conflict">
+            {{ i18n.t('edit.conflictMessage') }}
+            <button type="button" (click)="reload()">{{ i18n.t('edit.conflictReload') }}</button>
+            <button type="button" (click)="keep()">{{ i18n.t('edit.conflictKeep') }}</button>
+          </section>
+        }
+        <hops-markdown-editor
+          class="editor-pane"
+          [content]="state.editBuffer()"
+          (contentChange)="state.updateBuffer($event)"
+        />
+      </div>
+    } @else {
+      @switch (state.selectedKind()) {
+        @case ('email') {
+          @if (state.selectedEmail(); as mail) {
+            <hops-email-view [email]="mail" />
+          }
+        }
+        @case ('image') {
+          @if (state.selectedImageUrl(); as url) {
+            <hops-image-view [src]="url" [name]="fileName()" />
+          }
+        }
+        @case ('text') {
+          <div class="view-grid" [hidden]="!state.selectedContent()">
+            <pre class="hops-plaintext" #host (click)="onContentClick($event)">{{ state.selectedContent() }}</pre>
+          </div>
+        }
+        @default {
+          <div class="view-grid" [hidden]="!html()">
+            <article
+              #host
+              class="hops-markdown"
+              [innerHTML]="html()"
+              (click)="onContentClick($event)"
+            ></article>
+            @if (toc().length > 0) {
+              <aside class="toc-pane">
+                <hops-toc
+                  [items]="toc()"
+                  [collapsed]="tocCollapsed()"
+                  (itemSelected)="scrollToHeading($event)"
+                  (collapseToggled)="onTocToggle()"
+                />
+              </aside>
+            }
+          </div>
+        }
       }
-    </div>
+    }
   `,
   styles: [
     `
       :host {
-        display: block;
+        display: flex;
+        flex-direction: column;
         height: 100%;
-        overflow-y: auto;
+        min-height: 0;
         background: var(--hops-stout);
+        /* No overflow here: each branch owns its own scroll (view-grid scrolls
+           the rendered article; CodeMirror scrolls itself in edit mode). */
       }
       .view-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: start;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+      }
+      .editor-container {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        overflow: hidden; /* CodeMirror owns its internal scroller */
+      }
+      .editor-pane {
+        flex: 1;
+        min-height: 0;
+        height: 100%;
       }
       .toc-pane {
         position: sticky;
@@ -121,11 +204,34 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         margin: 0;
         padding: 0.6rem 1rem;
         font-size: 0.85rem;
+        flex-shrink: 0;
       }
       .banner-error {
         background: rgba(179, 64, 54, 0.18);
         color: #ffd8d5;
         border-bottom: 1px solid rgba(179, 64, 54, 0.4);
+      }
+      .banner-conflict {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: rgba(245, 197, 66, 0.12);
+        color: var(--hops-pilsner);
+        border-bottom: 1px solid rgba(245, 197, 66, 0.3);
+      }
+      .banner-conflict button {
+        appearance: none;
+        background: rgba(245, 197, 66, 0.15);
+        border: 1px solid rgba(245, 197, 66, 0.35);
+        border-radius: 3px;
+        color: var(--hops-foam);
+        font-size: 0.78rem;
+        padding: 0.15rem 0.55rem;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .banner-conflict button:hover {
+        background: rgba(245, 197, 66, 0.25);
       }
       .filebar {
         display: flex;
@@ -137,6 +243,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         font-family: var(--hops-mono);
         font-size: 0.78rem;
         color: var(--hops-text-dim);
+        flex-shrink: 0;
       }
       .filebar-path {
         flex: 1;
@@ -144,6 +251,30 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        /* Reset button chrome — reads like the path text, behaves like a
+           button (click to copy the absolute path). */
+        appearance: none;
+        background: transparent;
+        border: 0;
+        margin: 0;
+        padding: 0.12rem 0.35rem;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .filebar-path:hover {
+        background: rgba(245, 197, 66, 0.1);
+        color: var(--hops-foam);
+      }
+      .filebar-path:focus-visible {
+        outline: 1px solid var(--hops-malt);
+        outline-offset: 1px;
+      }
+      .filebar-copied {
+        color: var(--hops-pilsner);
+        font-weight: 500;
       }
       .filebar-sep {
         color: var(--hops-malt);
@@ -151,6 +282,46 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
       .filebar-modified {
         color: var(--hops-pilsner);
         white-space: nowrap;
+      }
+      .filebar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+      }
+      .dirty {
+        color: var(--hops-pilsner);
+        font-size: 1.1rem;
+        line-height: 1;
+        font-weight: 700;
+      }
+      .fbtn {
+        appearance: none;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--hops-border);
+        border-radius: 3px;
+        color: var(--hops-text-dim);
+        font-family: var(--hops-mono);
+        font-size: 0.75rem;
+        padding: 0.15rem 0.5rem;
+        cursor: pointer;
+        white-space: nowrap;
+        line-height: 1.4;
+      }
+      .fbtn:hover {
+        background: rgba(245, 197, 66, 0.1);
+        color: var(--hops-foam);
+        border-color: rgba(245, 197, 66, 0.35);
+      }
+      .fbtn.primary {
+        background: rgba(245, 197, 66, 0.15);
+        border-color: rgba(245, 197, 66, 0.4);
+        color: var(--hops-pilsner);
+        font-weight: 500;
+      }
+      .fbtn.primary:hover {
+        background: rgba(245, 197, 66, 0.25);
+        color: var(--hops-foam);
       }
       .empty {
         max-width: 540px;
@@ -177,6 +348,16 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         margin-top: 1.2rem;
         font-size: 0.8rem;
         color: var(--hops-malt);
+      }
+      .hops-plaintext {
+        margin: 0;
+        padding: 1.25rem 1.5rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--hops-mono);
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--hops-text);
       }
     `,
   ],
@@ -214,10 +395,20 @@ export class MarkdownViewComponent {
   /** Ticks every few seconds so the relative-time label refreshes itself. */
   private readonly nowTick = signal<number>(Date.now());
 
+  /** True for a short beat after the path is copied, so the filebar swaps the
+   *  path text for a "✓ copied" confirmation. */
+  protected readonly pathCopied = signal<boolean>(false);
+  private pathCopiedTimer: ReturnType<typeof setTimeout> | null = null;
+
   protected readonly modifiedLabel = computed<string | null>(() => {
     const mtime = this.state.lastModified();
     if (mtime === null) return null;
     return this.formatRelative(mtime, this.nowTick());
+  });
+
+  protected readonly fileName = computed(() => {
+    const p = this.state.selectedPath();
+    return p ? (p.split(/[\\/]/).pop() ?? '') : '';
   });
 
   protected readonly modifiedAbsolute = computed<string>(() => {
@@ -253,6 +444,10 @@ export class MarkdownViewComponent {
       const content = this.state.selectedContent();
       const path = this.state.selectedPath();
       this.i18n.locale(); // tracked dependency, used inside parser
+      if (this.state.selectedKind() !== 'markdown') {
+        this.html.set(null);
+        return;
+      }
       if (!content) {
         this.html.set(null);
         return;
@@ -291,8 +486,67 @@ export class MarkdownViewComponent {
       () => this.nowTick.set(Date.now()),
       RELATIVE_TIME_TICK_MS,
     );
-    inject(DestroyRef).onDestroy(() => clearInterval(tickId));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(tickId);
+      if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
+    });
   }
+
+  /**
+   * Copy the open file's absolute path to the clipboard and flash a short
+   * confirmation in the filebar. Mirrors the code-block copy behaviour but
+   * surfaces the result inline (signal-driven) rather than via a tooltip.
+   */
+  protected async copyPath(): Promise<void> {
+    const path = this.state.selectedPath();
+    if (!path) return;
+    if (!(await this.writeClipboard(path))) return;
+    this.pathCopied.set(true);
+    if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
+    this.pathCopiedTimer = setTimeout(() => this.pathCopied.set(false), PATH_COPIED_MS);
+  }
+
+  // ── Edit mode controls ──────────────────────────────────────────────────
+
+  protected enterEdit(): void {
+    this.state.enterEditing();
+  }
+
+  protected async save(): Promise<void> {
+    await this.state.saveRecipe();
+  }
+
+  protected cancel(): void {
+    if (this.state.dirty() && !confirm(this.i18n.t('edit.discardConfirm'))) return;
+    this.state.cancelEditing();
+  }
+
+  protected reload(): void {
+    void this.state.reloadFromDisk();
+  }
+
+  protected keep(): void {
+    this.state.keepMyEdits();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected onKey(e: KeyboardEvent): void {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (this.state.mode() === 'editing') void this.state.saveRecipe();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      if (this.state.mode() === 'viewing' && this.state.selectedPath()) this.state.enterEditing();
+      return;
+    }
+    if (e.key === 'Escape' && this.state.mode() === 'editing') {
+      this.cancel();
+    }
+  }
+
+  // ── Content click handler ───────────────────────────────────────────────
 
   /**
    * Event-delegate clicks on the toolbar buttons that the parser injects
@@ -360,11 +614,9 @@ export class MarkdownViewComponent {
       return;
     }
 
-    // External URL — defer to the system browser/handler. We only allow
-    // http(s) here because the opener plugin's URL scope is restricted to
-    // those schemes in our capability (broader patterns like `mailto:*`
-    // aren't accepted by the scope parser).
-    if (/^https?:/i.test(rawHref)) {
+    // External URL — defer to the system browser/handler. Covers http(s),
+    // mailto:, and tel: links — all routed through the opener plugin.
+    if (/^(https?|mailto|tel):/i.test(rawHref)) {
       try {
         await openUrlBridge(rawHref);
       } catch (err) {
@@ -391,8 +643,7 @@ export class MarkdownViewComponent {
     const decodedPath = decodeURIComponent(pathPart);
     const resolved = resolveRelative(dirname(currentPath), decodedPath);
 
-    const isMarkdown = /\.(md|markdown|mdx)$/i.test(decodedPath);
-    if (isMarkdown) {
+    if (classify(decodedPath) !== 'unsupported') {
       if (anchor) this.pendingAnchor = decodeURIComponent(anchor);
       await this.state.openFileByPath(resolved);
       return;
@@ -477,23 +728,30 @@ export class MarkdownViewComponent {
 
   private async copySource(block: HTMLElement, button: HTMLElement): Promise<void> {
     const source = decodeBase64(block.dataset['source'] ?? '');
+    if (await this.writeClipboard(source)) this.flashCopied(button);
+  }
+
+  /**
+   * Write `text` to the clipboard, returning whether it succeeded. Prefers the
+   * async Clipboard API and falls back to a hidden-textarea `execCommand`
+   * copy, because some webview configurations block the async API without a
+   * "trusted" user gesture in ways that are hard to predict.
+   */
+  private async writeClipboard(text: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(source);
-      this.flashCopied(button);
+      await navigator.clipboard.writeText(text);
+      return true;
     } catch {
-      // Some webviews block clipboard without user gesture in odd ways.
-      // Fall back to a temp textarea select+copy.
       const textarea = document.createElement('textarea');
-      textarea.value = source;
+      textarea.value = text;
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
       textarea.select();
       try {
-        document.execCommand('copy');
-        this.flashCopied(button);
+        return document.execCommand('copy');
       } catch {
-        // give up silently — at least the source view is one click away
+        return false;
       } finally {
         document.body.removeChild(textarea);
       }
@@ -515,21 +773,16 @@ export class MarkdownViewComponent {
     block.dataset['view'] = view;
   }
 
-  private async openInEditor(): Promise<void> {
-    const path = this.state.selectedPath();
-    if (!path) {
+  /**
+   * The code-block toolbar's pencil now enters the in-app CodeMirror editor
+   * rather than launching the OS-default editor — CodeMirror is the editor.
+   */
+  private openInEditor(): void {
+    if (!this.state.selectedPath()) {
       this.state.showError(this.i18n.t('error.noDocOpen'));
       return;
     }
-    try {
-      await openPathBridge(path);
-    } catch (err) {
-      this.state.showError(
-        this.i18n.t('error.openEditorFailed', {
-          detail: err instanceof Error ? err.message : String(err),
-        }),
-      );
-    }
+    this.state.enterEditing();
   }
 }
 

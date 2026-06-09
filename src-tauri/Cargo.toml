@@ -1,6 +1,6 @@
 [package]
 name = "hopsmd"
-version = "1.0.0"
+version = "1.1.0"
 description = "HopsMD — local Markdown & Mermaid viewer (a CloudBrew side project)"
 authors = ["Ludwig Biermann"]
 edition = "2021"
@@ -22,7 +22,9 @@ tauri-plugin-process = { version = "2", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-notify-debouncer-mini = "0.4"
+notify-debouncer-full = "0.3"
+mail-parser = "0.11"
+msg_parser = "0.3"
 
 [features]
 default = ["custom-protocol"]

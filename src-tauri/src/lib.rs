@@ -11,7 +11,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .manage(commands::watcher::RecipeWatcher::default());
+        .manage(commands::watcher::BrewhouseWatcher::default());
 
     // In-app updater is feature-gated so the build still succeeds before the
     // ed25519 keypair has been generated. Enable with `cargo build --features
@@ -25,8 +25,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::recipe_book::open_brewhouse,
             commands::recipe_book::tap_recipe,
-            commands::watcher::watch_recipe,
-            commands::watcher::unwatch_recipe,
+            commands::recipe_book::save_recipe,
+            commands::recipe_book::create_recipe,
+            commands::recipe_book::create_folder,
+            commands::recipe_book::rename_path,
+            commands::recipe_book::delete_path,
+            commands::email::read_email,
+            commands::watcher::watch_brewhouse,
+            commands::watcher::set_open_recipe,
+            commands::watcher::unwatch_brewhouse,
         ])
         .run(tauri::generate_context!())
         .expect("HopsMD: der Braukessel ist umgekippt — Tauri konnte nicht starten");

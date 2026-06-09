@@ -48,6 +48,24 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
             <span class="ctx-item-icon">🔍</span>
             {{ i18n.t('ctx.openFolder') }}
           </button>
+          <hr class="ctx-sep" />
+          <button type="button" class="ctx-item" (click)="ctx.requestAction('new-file')" role="menuitem">
+            <span class="ctx-item-icon">📄</span>
+            {{ i18n.t('fileops.newFile') }}
+          </button>
+          <button type="button" class="ctx-item" (click)="ctx.requestAction('new-folder')" role="menuitem">
+            <span class="ctx-item-icon">📁</span>
+            {{ i18n.t('fileops.newFolder') }}
+          </button>
+          <hr class="ctx-sep" />
+          <button type="button" class="ctx-item" (click)="ctx.requestAction('rename')" role="menuitem">
+            <span class="ctx-item-icon">✏️</span>
+            {{ i18n.t('fileops.rename') }}
+          </button>
+          <button type="button" class="ctx-item ctx-item-danger" (click)="ctx.requestAction('delete')" role="menuitem">
+            <span class="ctx-item-icon">🗑️</span>
+            {{ i18n.t('fileops.delete') }}
+          </button>
         } @else {
           <button type="button" class="ctx-item" (click)="revealFile()" role="menuitem">
             <span class="ctx-item-icon">🔍</span>
@@ -56,6 +74,15 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
           <button type="button" class="ctx-item" (click)="openFile()" role="menuitem">
             <span class="ctx-item-icon">✏️</span>
             {{ i18n.t('ctx.openInEditor') }}
+          </button>
+          <hr class="ctx-sep" />
+          <button type="button" class="ctx-item" (click)="ctx.requestAction('rename')" role="menuitem">
+            <span class="ctx-item-icon">✏️</span>
+            {{ i18n.t('fileops.rename') }}
+          </button>
+          <button type="button" class="ctx-item ctx-item-danger" (click)="ctx.requestAction('delete')" role="menuitem">
+            <span class="ctx-item-icon">🗑️</span>
+            {{ i18n.t('fileops.delete') }}
           </button>
         }
       </div>
@@ -113,6 +140,18 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
       }
       .ctx-item-icon {
         font-size: 0.95em;
+      }
+      .ctx-item-danger {
+        color: var(--hops-error, #e05c5c);
+      }
+      .ctx-item-danger:hover {
+        background: rgba(224, 92, 92, 0.12);
+        color: var(--hops-error, #e05c5c);
+      }
+      .ctx-sep {
+        border: none;
+        border-top: 1px solid var(--hops-border);
+        margin: 0.2rem 0.4rem;
       }
     `,
   ],

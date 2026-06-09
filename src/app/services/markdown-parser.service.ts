@@ -1,6 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import DOMPurify from 'dompurify';
 import { Marked, type Tokens } from 'marked';
+import markedAlert from 'marked-alert';
+import markedFootnote from 'marked-footnote';
+import markedKatex from 'marked-katex-extension';
+import { definitionListExtension } from '../core/markdown-extensions/definition-list.extension';
+import { emojiExtension } from '../core/markdown-extensions/emoji.extension';
+import { wikiLinkExtension } from '../core/markdown-extensions/wikilink.extension';
 import { dirname, resolveRelative } from '../core/path-utils';
 import { toAssetUrl } from '../core/tauri-bridge';
 import { I18nService } from './i18n.service';
@@ -56,10 +62,21 @@ const ICON_FULLSCREEN = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hi
 export class MarkdownParserService {
   private readonly i18n = inject(I18nService);
   private readonly marked = new Marked({
+    async: true,
     gfm: true,
     breaks: false,
     pedantic: false,
   });
+
+  /** Singleton promise for the lazily loaded highlight.js common bundle. */
+  private hljsPromise: Promise<typeof import('highlight.js').default> | null = null;
+
+  private loadHljs(): Promise<typeof import('highlight.js').default> {
+    if (!this.hljsPromise) {
+      this.hljsPromise = import('highlight.js/lib/common').then((m) => m.default);
+    }
+    return this.hljsPromise;
+  }
 
   constructor() {
     this.marked.use({
@@ -67,6 +84,38 @@ export class MarkdownParserService {
         code: (token: Tokens.Code): string => this.renderCodeBlock(token),
       },
     });
+
+    this.marked.use({
+      async: true,
+      walkTokens: async (token) => {
+        if (token.type !== 'code') return;
+        const lang = (token.lang ?? '').trim().split(/\s+/)[0].toLowerCase();
+        if (lang === 'mermaid') return; // diagrams render separately
+        const hljs = await this.loadHljs();
+        try {
+          const result =
+            lang && hljs.getLanguage(lang)
+              ? hljs.highlight(token.text, { language: lang, ignoreIllegals: true })
+              : hljs.highlightAuto(token.text);
+          (token as unknown as { hopsHighlighted?: string }).hopsHighlighted = result.value;
+        } catch {
+          // leave unhighlighted; renderer falls back to escaped text
+        }
+      },
+    });
+
+    // Task 4: Footnotes — GFM-style [^1] footnotes.
+    this.marked.use(markedFootnote());
+
+    // Task 5: Math — inline $…$ and block $$…$$ via KaTeX (HTML output).
+    this.marked.use(markedKatex({ throwOnError: false, output: 'html' }));
+
+    // Task 6: Admonitions — GitHub-style > [!NOTE] / [!TIP] / etc. callouts.
+    this.marked.use(markedAlert());
+
+    // Tasks 8–10: Custom inline/block extensions — emoji shortcodes, definition
+    // lists, and wiki-links. Registered together in a single use() call.
+    this.marked.use({ extensions: [emojiExtension, definitionListExtension, wikiLinkExtension] });
 
     // Permit asset:// and tauri:// URLs through DOMPurify — the asset protocol
     // is how local images are exposed to the webview.
@@ -91,21 +140,54 @@ export class MarkdownParserService {
    */
   async parse(markdown: string, filePath: string | null): Promise<string> {
     const baseDir = filePath ? dirname(filePath) : null;
-    const rawHtml = await this.marked.parse(markdown, { async: true });
-    const withAssets = baseDir ? await this.rewriteRelativeImages(rawHtml, baseDir) : rawHtml;
+    const { frontmatter, body } = this.splitFrontmatter(markdown);
+    const rawHtml = await this.marked.parse(body, { async: true });
+    const withFm = frontmatter !== null ? this.frontmatterHtml(frontmatter) + rawHtml : rawHtml;
+    const withAssets = baseDir ? await this.rewriteRelativeImages(withFm, baseDir) : withFm;
     return DOMPurify.sanitize(withAssets, {
       ADD_ATTR: ['target'],
       ALLOW_DATA_ATTR: true,
     });
   }
 
+  /**
+   * Split a leading YAML frontmatter block (`---` … `---`) off the document.
+   * Returns the raw frontmatter (without fences) and the remaining body.
+   * Only matches when the very first line is `---`.
+   */
+  private splitFrontmatter(src: string): { frontmatter: string | null; body: string } {
+    const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(src);
+    if (!match) return { frontmatter: null, body: src };
+    return { frontmatter: match[1], body: src.slice(match[0].length) };
+  }
+
+  /** Render the raw frontmatter as a collapsible box prepended to the document. */
+  private frontmatterHtml(raw: string): string {
+    const escaped = raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return (
+      `<details class="hops-frontmatter"><summary>frontmatter</summary>` +
+      `<pre>${escaped}</pre></details>`
+    );
+  }
+
   private renderCodeBlock(token: Tokens.Code): string {
-    const lang = (token.lang ?? '').trim().toLowerCase();
+    const lang = (token.lang ?? '').trim().split(/\s+/)[0].toLowerCase();
     const isMermaid = lang === 'mermaid';
     const id = blockId();
     const payload = encodeBase64Utf8(token.text);
-    const escapedSource = escapeHtml(token.text);
-    const langClass = lang ? ` class="language-${escapeHtml(lang)}"` : '';
+    const highlighted = (token as unknown as { hopsHighlighted?: string }).hopsHighlighted;
+    // Use pre-highlighted HTML when available (already HTML — do NOT re-escape).
+    // Fall back to escaped raw text for the mermaid branch or if highlighting failed.
+    const codeInner = !isMermaid && highlighted !== undefined ? highlighted : escapeHtml(token.text);
+    const codeClass = !isMermaid
+      ? `hljs${lang ? ` language-${escapeHtml(lang)}` : ''}`
+      : lang
+        ? `language-${escapeHtml(lang)}`
+        : '';
+    const langClass = codeClass ? ` class="${codeClass}"` : '';
     const langLabel = lang ? `<span class="hops-code-lang">${escapeHtml(lang)}</span>` : '';
 
     const toggleBtn = isMermaid
@@ -115,7 +197,7 @@ export class MarkdownParserService {
       ? `<button class="hops-code-action" type="button" data-action="fullscreen" title="${escapeHtml(this.i18n.t('code.fullscreen'))}">${ICON_FULLSCREEN}</button>`
       : '';
     const copyBtn = `<button class="hops-code-action" type="button" data-action="copy" title="${escapeHtml(this.i18n.t('code.copy'))}">${ICON_COPY}</button>`;
-    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="${escapeHtml(this.i18n.t('code.openInEditor'))}">${ICON_EDITOR}</button>`;
+    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="${escapeHtml(this.i18n.t('edit.enter'))}">${ICON_EDITOR}</button>`;
 
     const renderedSlot = isMermaid
       ? `<div class="${CODE_BLOCK_RENDERED_CLASS}"><span class="hops-pending">${escapeHtml(this.i18n.t('code.mermaidPending'))}</span></div>`
@@ -135,7 +217,7 @@ export class MarkdownParserService {
       editorBtn +
       `</div>` +
       renderedSlot +
-      `<pre class="hops-code-source"><code${langClass}>${escapedSource}</code></pre>` +
+      `<pre class="hops-code-source"><code${langClass}>${codeInner}</code></pre>` +
       `</div>`
     );
   }

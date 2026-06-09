@@ -16,9 +16,9 @@ import { Injectable, effect, signal } from '@angular/core';
  * MermaidFullscreenService — that one zooms a single diagram in an overlay,
  * this one zooms the article body.
  */
-const MIN_SCALE = 0.6;
-const MAX_SCALE = 2.5;
-const STEP = 0.1;
+export const MIN_SCALE = 0.6;
+export const MAX_SCALE = 2.5;
+export const STEP = 0.1;
 const DEFAULT_SCALE = 1.0;
 const STORAGE_KEY = 'hopsmd:contentScale';
 
