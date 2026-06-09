@@ -197,7 +197,7 @@ export class MarkdownParserService {
       ? `<button class="hops-code-action" type="button" data-action="fullscreen" title="${escapeHtml(this.i18n.t('code.fullscreen'))}">${ICON_FULLSCREEN}</button>`
       : '';
     const copyBtn = `<button class="hops-code-action" type="button" data-action="copy" title="${escapeHtml(this.i18n.t('code.copy'))}">${ICON_COPY}</button>`;
-    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="${escapeHtml(this.i18n.t('code.openInEditor'))}">${ICON_EDITOR}</button>`;
+    const editorBtn = `<button class="hops-code-action" type="button" data-action="open-editor" title="${escapeHtml(this.i18n.t('edit.enter'))}">${ICON_EDITOR}</button>`;
 
     const renderedSlot = isMermaid
       ? `<div class="${CODE_BLOCK_RENDERED_CLASS}"><span class="hops-pending">${escapeHtml(this.i18n.t('code.mermaidPending'))}</span></div>`

@@ -24,19 +24,6 @@ const MAX_DEPTH: usize = 16;
 /// Extensions counted as "markdown" — show up in the tree as recipes.
 const MARKDOWN_EXTENSIONS: &[&str] = &["md", "markdown", "mdx"];
 
-/// Folders we always show even if they contain no markdown, because they
-/// typically hold images / diagrams referenced by the surrounding docs.
-const ASSET_FOLDER_HINTS: &[&str] = &[
-    "assets",
-    "images",
-    "img",
-    "media",
-    "attachments",
-    "figures",
-    "diagrams",
-    "screenshots",
-];
-
 /// Folders we never descend into — pure noise inside a docs tree. Shared with
 /// the watcher, which filters out filesystem events under these directories so
 /// `node_modules`/`.git` churn never triggers a tree re-scan.
@@ -307,12 +294,10 @@ fn scan(dir: &Path, depth: usize) -> Option<RecipeNode> {
                 continue;
             }
             if let Some(sub) = scan(&path, depth + 1) {
-                let is_asset_hint = ASSET_FOLDER_HINTS
-                    .iter()
-                    .any(|h| h.eq_ignore_ascii_case(&name));
-                if !sub.children.is_empty() || is_asset_hint {
-                    children.push(sub);
-                }
+                // Show every non-ignored folder, including empty ones: a folder
+                // the user just created has no children yet but must appear in
+                // the tree immediately. (Noise dirs are already skipped above.)
+                children.push(sub);
             }
         } else if file_type.is_file() {
             if !is_markdown(&path) {

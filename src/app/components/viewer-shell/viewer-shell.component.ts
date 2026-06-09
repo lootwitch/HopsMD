@@ -1,5 +1,5 @@
 // src/app/components/viewer-shell/viewer-shell.component.ts
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { BreweryToolbarComponent } from '../brewery-toolbar/brewery-toolbar.component';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { FavoritesPanelComponent } from '../favorites-panel/favorites-panel.component';
@@ -8,7 +8,7 @@ import { MarkdownViewComponent } from '../markdown-view/markdown-view.component'
 import { MermaidFullscreenComponent } from '../mermaid-fullscreen/mermaid-fullscreen.component';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { I18nService } from '../../services/i18n.service';
-import { isTauri } from '../../core/tauri-bridge';
+import { appVersionBridge, isTauri } from '../../core/tauri-bridge';
 
 @Component({
   selector: 'hops-viewer-shell',
@@ -43,6 +43,8 @@ import { isTauri } from '../../core/tauri-bridge';
             </div>
           }
         </div>
+
+        <div class="sidebar-version" title="HopsMD">v{{ version() }}</div>
       </aside>
 
       <section class="content">
@@ -97,6 +99,17 @@ import { isTauri } from '../../core/tauri-bridge';
         color: var(--hops-text-dim);
         font-style: italic;
       }
+      .sidebar-version {
+        flex-shrink: 0;
+        padding: 0.3rem 0.85rem;
+        border-top: 1px solid var(--hops-border);
+        font-family: var(--hops-mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.3px;
+        color: var(--hops-text-dim);
+        opacity: 0.7;
+        user-select: text;
+      }
       .content {
         min-width: 0;
         min-height: 0;
@@ -111,16 +124,33 @@ export class ViewerShellComponent {
   private readonly i18n = inject(I18nService);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** App version shown small at the bottom of the sidebar. */
+  protected readonly version = signal<string>('');
+
   constructor() {
+    void appVersionBridge()
+      .then((v) => this.version.set(v))
+      .catch(() => this.version.set('dev'));
+
     if (isTauri()) {
       void (async () => {
         const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const win = getCurrentWindow();
-        const unlisten = await win.onCloseRequested(async (event) => {
-          if (this.state.dirty()) {
-            const leave = confirm(this.i18n.t('edit.discardConfirm'));
-            if (!leave) event.preventDefault();
+        // Tauri's onCloseRequested wrapper destroys the window after the handler
+        // resolves *unless* preventDefault() was called. We only ever want to
+        // block the close while there are unsaved edits — and then only if the
+        // user declines the discard prompt. preventDefault() is called up front
+        // so the async confirm can't race the wrapper's auto-destroy.
+        const unlisten = await win.onCloseRequested((event) => {
+          if (!this.state.dirty()) return; // clean → wrapper auto-destroys it
+          const leave = confirm(this.i18n.t('edit.discardConfirm'));
+          if (!leave) {
+            event.preventDefault();
+            return;
           }
+          // Not prevented → the wrapper destroys the window for us; just clear
+          // the edit state so no stale dirty guard lingers.
+          this.state.cancelEditing();
         });
         this.destroyRef.onDestroy(() => unlisten());
       })();

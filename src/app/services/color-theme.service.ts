@@ -162,6 +162,14 @@ export class ColorThemeService {
     this._presetId.set(id);
   }
 
+  /** Advance to the next preset in order, wrapping around. Drives the toolbar's
+   *  one-click theme switcher (mirrors the locale toggle). Clears overrides. */
+  cycle(): void {
+    const i = this.presets.findIndex((p) => p.id === this._presetId());
+    const next = this.presets[(i + 1) % this.presets.length];
+    this.setPreset(next.id);
+  }
+
   /** Override a single token on top of the active preset. */
   setToken(t: HopsToken, value: string): void {
     this._overrides.update((o) => ({ ...o, [t]: value }));

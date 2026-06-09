@@ -113,6 +113,16 @@ export async function deletePathBridge(path: string): Promise<void> {
 }
 
 /**
+ * The application version (from tauri.conf.json) for display in the UI. In
+ * browser-only mode there is no shell to ask, so we report a dev marker.
+ */
+export async function appVersionBridge(): Promise<string> {
+  if (!isTauri()) return 'dev';
+  const { getVersion } = await import('@tauri-apps/api/app');
+  return getVersion();
+}
+
+/**
  * Subscribe to a Tauri event. In browser-only mode this resolves to a no-op
  * unsubscribe so callers don't need to special-case the dev workflow.
  */

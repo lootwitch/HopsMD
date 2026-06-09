@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { ColorThemeService } from '../../services/color-theme.service';
 import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { UpdaterService } from '../../services/updater.service';
@@ -60,6 +61,14 @@ import { UpdaterService } from '../../services/updater.service';
         <button
           type="button"
           class="btn locale"
+          (click)="onCycleTheme()"
+          [title]="i18n.t('toolbar.cycleTheme', { name: i18n.t(theme.activePreset().nameKey) })"
+        >
+          {{ themeIcon() }}
+        </button>
+        <button
+          type="button"
+          class="btn locale"
           (click)="onToggleLocale()"
           [title]="i18n.t('toolbar.toggleLocale')"
         >
@@ -89,7 +98,10 @@ import { UpdaterService } from '../../services/updater.service';
         gap: 1.25rem;
         height: 52px;
         padding: 0 1rem;
-        background: linear-gradient(180deg, #1c130b 0%, #140d07 100%);
+        /* Theme-aware: derives from the active palette so the top bar follows
+           light/dark presets instead of staying hardcoded dark (which made
+           dark icons invisible on the Pilsner Light theme). */
+        background: linear-gradient(180deg, var(--hops-stout-2) 0%, var(--hops-cellar) 100%);
         border-bottom: 1px solid var(--hops-border);
         user-select: none;
       }
@@ -228,7 +240,20 @@ export class BreweryToolbarComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly updater = inject(UpdaterService);
   protected readonly i18n = inject(I18nService);
+  protected readonly theme = inject(ColorThemeService);
   private readonly router = inject(Router);
+
+  /** A glyph per preset so the one-click theme switcher reads at a glance. */
+  protected readonly themeIcon = computed(() => {
+    switch (this.theme.presetId()) {
+      case 'pilsner-hell':
+        return '☀️';
+      case 'hoher-kontrast':
+        return '◐';
+      default:
+        return '🌙';
+    }
+  });
 
   protected goSettings(): void {
     if (this.state.dirty()) {
@@ -252,5 +277,9 @@ export class BreweryToolbarComponent {
 
   protected onToggleLocale(): void {
     this.i18n.toggle();
+  }
+
+  protected onCycleTheme(): void {
+    this.theme.cycle();
   }
 }

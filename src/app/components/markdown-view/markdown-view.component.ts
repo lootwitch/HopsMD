@@ -126,7 +126,6 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
           class="hops-markdown"
           [innerHTML]="html()"
           (click)="onContentClick($event)"
-          (dblclick)="enterEdit()"
         ></article>
         @if (toc().length > 0) {
           <aside class="toc-pane">
@@ -734,21 +733,16 @@ export class MarkdownViewComponent {
     block.dataset['view'] = view;
   }
 
-  private async openInEditor(): Promise<void> {
-    const path = this.state.selectedPath();
-    if (!path) {
+  /**
+   * The code-block toolbar's pencil now enters the in-app CodeMirror editor
+   * rather than launching the OS-default editor — CodeMirror is the editor.
+   */
+  private openInEditor(): void {
+    if (!this.state.selectedPath()) {
       this.state.showError(this.i18n.t('error.noDocOpen'));
       return;
     }
-    try {
-      await openPathBridge(path);
-    } catch (err) {
-      this.state.showError(
-        this.i18n.t('error.openEditorFailed', {
-          detail: err instanceof Error ? err.message : String(err),
-        }),
-      );
-    }
+    this.state.enterEditing();
   }
 }
 

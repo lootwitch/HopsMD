@@ -26,6 +26,7 @@ const EN = {
   'toolbar.refresh': 'Refill',
   'toolbar.refreshTooltip': 'Refill — re-scan directory',
   'toolbar.toggleLocale': 'Switch language',
+  'toolbar.cycleTheme': 'Switch theme ({name})',
   'toolbar.settings': 'Settings',
 
   // -- favourites panel --
@@ -157,6 +158,7 @@ const DE: Record<TranslationKey, string> = {
   'toolbar.refresh': 'Nachschlag',
   'toolbar.refreshTooltip': 'Nachschlag — Verzeichnis neu einlesen',
   'toolbar.toggleLocale': 'Sprache wechseln',
+  'toolbar.cycleTheme': 'Thema wechseln ({name})',
   'toolbar.settings': 'Einstellungen',
 
   'favorites.title': 'Sudhause',

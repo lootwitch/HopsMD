@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Read/Edit mode toggle** — any `.md` file can now be edited in-app.
-  Click the ✎ button in the filebar (or press **Ctrl+E**, or double-click the
-  rendered article) to switch to a **CodeMirror 6** source editor with Markdown
-  syntax highlighting and line numbers. A `•` dirty marker appears as soon as
-  the buffer diverges from the on-disk content.
+  Click the ✎ button in the filebar (or press **Ctrl+E**) to switch to a
+  **CodeMirror 6** source editor with Markdown syntax highlighting and line
+  numbers. A `•` dirty marker appears as soon as the buffer diverges from the
+  on-disk content.
+- **One-click theme switcher** in the top bar — cycles through the Brewpub Dark
+  / Pilsner Light / High Contrast presets (mirrors the language toggle), with a
+  ☀️/🌙/◐ glyph showing the active theme.
+- The current **app version** is shown small at the bottom of the recipe-book
+  sidebar.
 - **Explicit save** — **Ctrl+S** or the *Save* button writes the buffer to disk
   atomically (BOM-free, via a sibling temp-file rename in Rust). The watcher
   echo-cancels its own save event by content comparison, so the editor is
@@ -45,6 +50,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   IMPORTANT / WARNING / CAUTION), task-list checkboxes, emoji shortcodes
   (`:beer:` style), definition lists, and wiki-links (`[[Page]]` /
   `[[Page|label]]`). Custom extensions live in `core/markdown-extensions/`.
+
+### Changed
+- Edit mode is now entered **only** via the ✎ button or **Ctrl+E** —
+  double-clicking the rendered article no longer enters edit mode (it was too
+  easy to trigger accidentally).
+- The pencil button on a code-block toolbar now opens the file in the **in-app
+  CodeMirror editor** instead of launching the OS-default external editor.
+
+### Fixed
+- The top bar now follows the active colour theme — on the **Pilsner Light**
+  preset its icons (e.g. the settings gear) were invisible because the bar was
+  hardcoded dark while the icons used the light-theme foreground colour.
+- Newly created **empty folders** now appear in the recipe-book tree
+  immediately; the directory scan previously hid folders with no markdown
+  children, so a freshly created folder showed in the OS file manager but never
+  in the navigation.
+- The window can be **closed via the X button** again. The close handler relied
+  on `window.destroy()`, which was missing the `core:window:allow-destroy`
+  capability, so the close was silently rejected.
 
 ## [1.0.0] - 2026-05-19
 
