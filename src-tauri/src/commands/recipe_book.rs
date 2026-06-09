@@ -129,6 +129,8 @@ pub enum CommandError {
     AlreadyExists(String),
     #[error("Watcher-Fehler: {0}")]
     Watch(String),
+    #[error("E-Mail konnte nicht gelesen werden: {0}")]
+    EmailParse(String),
 }
 
 impl serde::Serialize for CommandError {
