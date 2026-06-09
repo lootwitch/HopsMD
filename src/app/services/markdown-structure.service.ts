@@ -7,9 +7,13 @@ import {
   isTauri,
   listenBridge,
   pickBrewhouse,
+  readEmailBridge,
   renamePathBridge,
   saveRecipeBridge,
+  toAssetUrl,
 } from '../core/tauri-bridge';
+import { classify, isEditableKind, type FileKind } from '../core/file-kind';
+import type { EmailContent } from '../models/email-content.model';
 import type { RecipeContent } from '../models/recipe-content.model';
 import type { RecipeNode } from '../models/recipe-node.model';
 
@@ -45,6 +49,9 @@ export class MarkdownStructureService {
   private readonly _mode = signal<'viewing' | 'editing'>('viewing');
   private readonly _editBuffer = signal<string>('');
   private readonly _externalConflict = signal<boolean>(false);
+  private readonly _selectedKind = signal<FileKind>('markdown');
+  private readonly _selectedEmail = signal<EmailContent | null>(null);
+  private readonly _selectedImageUrl = signal<string | null>(null);
 
   // --- public read-only views ---
   readonly brewhouse = this._brewhouse.asReadonly();
@@ -57,7 +64,11 @@ export class MarkdownStructureService {
   readonly mode = this._mode.asReadonly();
   readonly editBuffer = this._editBuffer.asReadonly();
   readonly externalConflict = this._externalConflict.asReadonly();
-  readonly dirty = computed(() => this._mode() === 'editing' && this._editBuffer() !== this._selectedContent());
+  readonly selectedKind = this._selectedKind.asReadonly();
+  readonly selectedEmail = this._selectedEmail.asReadonly();
+  readonly selectedImageUrl = this._selectedImageUrl.asReadonly();
+  readonly editable = computed(() => isEditableKind(this._selectedKind()));
+  readonly dirty = computed(() => this.editable() && this._mode() === 'editing' && this._editBuffer() !== this._selectedContent());
 
   readonly isOpen = computed(() => this._tree() !== null);
 
@@ -127,6 +138,7 @@ export class MarkdownStructureService {
 
   /** Enter edit mode, seeding the buffer from the current on-disk content. */
   enterEditing(): void {
+    if (!this.editable()) return;
     if (!this._selectedPath()) return;
     this._editBuffer.set(this._selectedContent());
     this._externalConflict.set(false);
@@ -202,8 +214,23 @@ export class MarkdownStructureService {
     this._loading.set(true);
     this._error.set(null);
     this._selectedPath.set(path);
+    const kind = classify(path);
+    this._selectedKind.set(kind);
+    // Reset other kinds' payloads so a stale email/image never shows.
+    this._selectedEmail.set(null);
+    this._selectedImageUrl.set(null);
+    this._mode.set('viewing');
+    this._editBuffer.set('');
     try {
-      await this.tap(path);
+      if (kind === 'email') {
+        this._selectedContent.set('');
+        this._selectedEmail.set(await readEmailBridge(path));
+      } else if (kind === 'image') {
+        this._selectedContent.set('');
+        this._selectedImageUrl.set(await toAssetUrl(path));
+      } else {
+        await this.tap(path); // markdown + text
+      }
       try {
         await invokeBridge<void>('set_open_recipe', { path });
       } catch (err) {
@@ -230,6 +257,9 @@ export class MarkdownStructureService {
     this._mode.set('viewing');
     this._editBuffer.set('');
     this._externalConflict.set(false);
+    this._selectedKind.set('markdown');
+    this._selectedEmail.set(null);
+    this._selectedImageUrl.set(null);
     if (isTauri()) {
       void invokeBridge<void>('set_open_recipe', { path: null }).catch(() => undefined);
     }
@@ -282,6 +312,19 @@ export class MarkdownStructureService {
 
   private onRecipeChanged(path: string): void {
     if (path !== this._selectedPath()) return;
+    const kind = this._selectedKind();
+    if (kind === 'email') {
+      void readEmailBridge(path)
+        .then((e) => { if (path === this._selectedPath()) this._selectedEmail.set(e); })
+        .catch((err) => this._error.set(this.describe(err)));
+      return;
+    }
+    if (kind === 'image') {
+      void toAssetUrl(path).then((u) => {
+        if (path === this._selectedPath()) this._selectedImageUrl.set(`${u}?t=${this._lastModified() ?? ''}`);
+      });
+      return;
+    }
     void invokeBridge<RecipeContent>('tap_recipe', { path })
       .then((result) => {
         if (path !== this._selectedPath()) return; // raced selection change
