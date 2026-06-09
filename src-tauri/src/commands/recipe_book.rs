@@ -24,6 +24,48 @@ const MAX_DEPTH: usize = 16;
 /// Extensions counted as "markdown" — show up in the tree as recipes.
 const MARKDOWN_EXTENSIONS: &[&str] = &["md", "markdown", "mdx"];
 
+const TEXT_EXTENSIONS: &[&str] = &["txt", "text", "log"];
+const EMAIL_EXTENSIONS: &[&str] = &["eml", "msg"];
+const IMAGE_EXTENSIONS: &[&str] =
+    &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "ico"];
+
+/// Coarse classification of a file by extension. Drives which read path and
+/// which frontend viewer a file gets. Mirrored in `core/file-kind.ts`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileKind {
+    Markdown,
+    Text,
+    Email,
+    Image,
+    Unsupported,
+}
+
+pub(crate) fn kind_of(path: &Path) -> FileKind {
+    let ext = extension_of(path);
+    let any = |set: &[&str]| set.iter().any(|m| m.eq_ignore_ascii_case(&ext));
+    if any(MARKDOWN_EXTENSIONS) {
+        FileKind::Markdown
+    } else if any(TEXT_EXTENSIONS) {
+        FileKind::Text
+    } else if any(EMAIL_EXTENSIONS) {
+        FileKind::Email
+    } else if any(IMAGE_EXTENSIONS) {
+        FileKind::Image
+    } else {
+        FileKind::Unsupported
+    }
+}
+
+/// A file the tree should show and the app can open in some viewer.
+pub(crate) fn is_viewable(path: &Path) -> bool {
+    kind_of(path) != FileKind::Unsupported
+}
+
+/// A file we read as UTF-8 text (markdown + plain text) — editable kinds.
+pub(crate) fn is_text_readable(path: &Path) -> bool {
+    matches!(kind_of(path), FileKind::Markdown | FileKind::Text)
+}
+
 /// Folders we never descend into — pure noise inside a docs tree. Shared with
 /// the watcher, which filters out filesystem events under these directories so
 /// `node_modules`/`.git` churn never triggers a tree re-scan.
@@ -300,7 +342,7 @@ fn scan(dir: &Path, depth: usize) -> Option<RecipeNode> {
                 children.push(sub);
             }
         } else if file_type.is_file() {
-            if !is_markdown(&path) {
+            if !is_viewable(&path) {
                 continue;
             }
             children.push(RecipeNode {
@@ -447,6 +489,39 @@ pub(crate) fn strip_bom(mut s: String) -> String {
 mod tests {
     use super::{atomic_write, is_safe_name, strip_bom};
     use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn kind_of_classifies_extensions() {
+        use super::FileKind::*;
+        assert_eq!(super::kind_of(Path::new("a.md")), Markdown);
+        assert_eq!(super::kind_of(Path::new("a.markdown")), Markdown);
+        assert_eq!(super::kind_of(Path::new("a.txt")), Text);
+        assert_eq!(super::kind_of(Path::new("a.LOG")), Text);
+        assert_eq!(super::kind_of(Path::new("a.eml")), Email);
+        assert_eq!(super::kind_of(Path::new("a.MSG")), Email);
+        assert_eq!(super::kind_of(Path::new("a.png")), Image);
+        assert_eq!(super::kind_of(Path::new("a.jpeg")), Image);
+        assert_eq!(super::kind_of(Path::new("a.exe")), Unsupported);
+        assert_eq!(super::kind_of(Path::new("a")), Unsupported);
+    }
+
+    #[test]
+    fn is_viewable_matches_known_kinds() {
+        assert!(super::is_viewable(Path::new("a.md")));
+        assert!(super::is_viewable(Path::new("a.txt")));
+        assert!(super::is_viewable(Path::new("a.eml")));
+        assert!(super::is_viewable(Path::new("a.webp")));
+        assert!(!super::is_viewable(Path::new("a.zip")));
+    }
+
+    #[test]
+    fn is_text_readable_is_markdown_and_text_only() {
+        assert!(super::is_text_readable(Path::new("a.md")));
+        assert!(super::is_text_readable(Path::new("a.txt")));
+        assert!(!super::is_text_readable(Path::new("a.eml")));
+        assert!(!super::is_text_readable(Path::new("a.png")));
+    }
 
     #[test]
     fn atomic_write_replaces_file_contents() {
