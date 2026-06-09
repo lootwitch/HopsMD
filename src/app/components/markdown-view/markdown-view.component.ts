@@ -22,6 +22,9 @@ import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.serv
 import { MermaidRenderService } from '../../services/mermaid-render.service';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { TocComponent } from '../toc/toc.component';
+import { EmailViewComponent } from '../email-view/email-view.component';
+import { ImageViewComponent } from '../image-view/image-view.component';
+import { classify } from '../../core/file-kind';
 
 /** How often the "Updated X ago" label re-evaluates. 5 s is fine-grained
  *  enough that the user notices it ticking, cheap enough to ignore. */
@@ -45,7 +48,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 @Component({
   selector: 'hops-markdown-view',
   standalone: true,
-  imports: [TocComponent, MarkdownEditorComponent],
+  imports: [TocComponent, MarkdownEditorComponent, EmailViewComponent, ImageViewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state.error(); as err) {
@@ -77,7 +80,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         }
         <span class="filebar-actions">
           @if (state.dirty()) { <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span> }
-          @if (state.mode() === 'viewing' && state.selectedPath()) {
+          @if (state.mode() === 'viewing' && state.selectedPath() && state.editable()) {
             <button type="button" class="fbtn" (click)="enterEdit()" [title]="i18n.t('edit.enter')">✎</button>
           } @else if (state.mode() === 'editing') {
             <button type="button" class="fbtn primary" (click)="save()">{{ i18n.t('edit.save') }}</button>
@@ -120,24 +123,43 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         />
       </div>
     } @else {
-      <div class="view-grid" [hidden]="!html()">
-        <article
-          #host
-          class="hops-markdown"
-          [innerHTML]="html()"
-          (click)="onContentClick($event)"
-        ></article>
-        @if (toc().length > 0) {
-          <aside class="toc-pane">
-            <hops-toc
-              [items]="toc()"
-              [collapsed]="tocCollapsed()"
-              (itemSelected)="scrollToHeading($event)"
-              (collapseToggled)="onTocToggle()"
-            />
-          </aside>
+      @switch (state.selectedKind()) {
+        @case ('email') {
+          @if (state.selectedEmail(); as mail) {
+            <hops-email-view [email]="mail" />
+          }
         }
-      </div>
+        @case ('image') {
+          @if (state.selectedImageUrl(); as url) {
+            <hops-image-view [src]="url" [name]="fileName()" />
+          }
+        }
+        @case ('text') {
+          <div class="view-grid" [hidden]="!state.selectedContent()">
+            <pre class="hops-plaintext" #host (click)="onContentClick($event)">{{ state.selectedContent() }}</pre>
+          </div>
+        }
+        @default {
+          <div class="view-grid" [hidden]="!html()">
+            <article
+              #host
+              class="hops-markdown"
+              [innerHTML]="html()"
+              (click)="onContentClick($event)"
+            ></article>
+            @if (toc().length > 0) {
+              <aside class="toc-pane">
+                <hops-toc
+                  [items]="toc()"
+                  [collapsed]="tocCollapsed()"
+                  (itemSelected)="scrollToHeading($event)"
+                  (collapseToggled)="onTocToggle()"
+                />
+              </aside>
+            }
+          </div>
+        }
+      }
     }
   `,
   styles: [
@@ -327,6 +349,16 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         font-size: 0.8rem;
         color: var(--hops-malt);
       }
+      .hops-plaintext {
+        margin: 0;
+        padding: 1.25rem 1.5rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--hops-mono);
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--hops-text);
+      }
     `,
   ],
 })
@@ -372,6 +404,11 @@ export class MarkdownViewComponent {
     const mtime = this.state.lastModified();
     if (mtime === null) return null;
     return this.formatRelative(mtime, this.nowTick());
+  });
+
+  protected readonly fileName = computed(() => {
+    const p = this.state.selectedPath();
+    return p ? (p.split(/[\\/]/).pop() ?? '') : '';
   });
 
   protected readonly modifiedAbsolute = computed<string>(() => {
@@ -602,8 +639,7 @@ export class MarkdownViewComponent {
     const decodedPath = decodeURIComponent(pathPart);
     const resolved = resolveRelative(dirname(currentPath), decodedPath);
 
-    const isMarkdown = /\.(md|markdown|mdx)$/i.test(decodedPath);
-    if (isMarkdown) {
+    if (classify(decodedPath) !== 'unsupported') {
       if (anchor) this.pendingAnchor = decodeURIComponent(anchor);
       await this.state.openFileByPath(resolved);
       return;
