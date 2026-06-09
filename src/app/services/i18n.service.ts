@@ -62,6 +62,13 @@ const EN = {
   'edit.conflictReload': 'Reload (discard my edits)',
   'edit.conflictKeep': 'Keep my edits',
 
+  // -- email view --
+  'email.from': 'From',
+  'email.to': 'To',
+  'email.subject': 'Subject',
+  'email.date': 'Date',
+  'email.attachments': 'Attachments',
+
   // -- settings page --
   'settings.title': 'Settings',
   'settings.close': 'Close',
@@ -190,6 +197,12 @@ const DE: Record<TranslationKey, string> = {
   'edit.conflictMessage': 'Diese Datei wurde auf der Platte geändert.',
   'edit.conflictReload': 'Neu laden (meine Änderungen verwerfen)',
   'edit.conflictKeep': 'Meine Änderungen behalten',
+
+  'email.from': 'Von',
+  'email.to': 'An',
+  'email.subject': 'Betreff',
+  'email.date': 'Datum',
+  'email.attachments': 'Anhänge',
 
   'settings.title': 'Einstellungen',
   'settings.close': 'Schließen',

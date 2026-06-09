@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Multi-format viewing** — the recipe tree now lists and opens plain-text
+  files (`.txt`/`.text`/`.log`, shown verbatim and editable like markdown),
+  emails (`.eml`/`.msg`, read-only header + sanitised HTML/text body +
+  attachment names), and common images (`.png`/`.jpg`/`.gif`/`.svg`/`.webp`/
+  `.bmp`/`.avif`/`.ico`, fit-to-view with dimensions). HTML email bodies are
+  sanitised and the app CSP blocks all remote content, so nothing phones home.
 - **Read/Edit mode toggle** — any `.md` file can now be edited in-app.
   Click the ✎ button in the filebar (or press **Ctrl+E**) to switch to a
   **CodeMirror 6** source editor with Markdown syntax highlighting and line

@@ -1,0 +1,5 @@
+HopsMD plain-text viewer test.
+
+Tabs:	col1	col2
+Long line to check wrapping: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore.
+No markdown here — **stars** and # hashes must show literally.

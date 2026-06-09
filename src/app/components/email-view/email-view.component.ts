@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 import type { EmailContent } from '../../models/email-content.model';
+import { I18nService } from '../../services/i18n.service';
 
 /** Read-only email viewer: header card + sanitised HTML body (or text body
  *  fallback) + attachment names. Remote content never loads (app CSP blocks
@@ -14,14 +15,14 @@ import type { EmailContent } from '../../models/email-content.model';
     @if (email(); as m) {
       <div class="email">
         <dl class="headers">
-          <dt>Von</dt><dd>{{ m.from }}</dd>
-          <dt>An</dt><dd>{{ m.to.join(', ') }}</dd>
-          <dt>Betreff</dt><dd class="subject">{{ m.subject }}</dd>
-          @if (m.date) { <dt>Datum</dt><dd>{{ m.date }}</dd> }
+          <dt>{{ i18n.t('email.from') }}</dt><dd>{{ m.from }}</dd>
+          <dt>{{ i18n.t('email.to') }}</dt><dd>{{ m.to.join(', ') }}</dd>
+          <dt>{{ i18n.t('email.subject') }}</dt><dd class="subject">{{ m.subject }}</dd>
+          @if (m.date) { <dt>{{ i18n.t('email.date') }}</dt><dd>{{ m.date }}</dd> }
         </dl>
         @if (m.attachments.length) {
           <div class="attachments">
-            📎 {{ m.attachments.length }}:
+            📎 {{ i18n.t('email.attachments') }} ({{ m.attachments.length }}):
             @for (a of m.attachments; track a.name) { <span class="att">{{ a.name }}</span> }
           </div>
         }
@@ -54,6 +55,7 @@ import type { EmailContent } from '../../models/email-content.model';
 })
 export class EmailViewComponent {
   private readonly sanitizer = inject(DomSanitizer);
+  protected readonly i18n = inject(I18nService);
   readonly email = input.required<EmailContent>();
 
   /** Sanitised HTML body, or null when there is no HTML part (→ text fallback). */
