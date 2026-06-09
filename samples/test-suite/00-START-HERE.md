@@ -31,6 +31,7 @@ Diese Seiten testen das reine Rendering. Durchklicken und visuell prüfen:
 9. [[09-Mermaid-Gallery|⑨ Mermaid-Galerie]] — 7 Diagrammtypen + Vollbild + Quelltext-Umschalter
 10. [[10-Images-and-Assets|⑩ Bilder & Assets]] — relative Bilder + Wiki-Embed
 11. [[11-Edge-Cases|⑪ Grenzfälle]] — kaputtes Mermaid (Fehlerisolierung), Frontmatter, leere Blöcke
+12. [[formats/00-Formats-Index|⑫ Multi-Format-Viewer]] — Klartext (`.txt`/`.log`), E-Mail (`.eml`) und Bilder (`.png`/`.svg`)
 
 Und der Ordnerbaum tiefer:
 

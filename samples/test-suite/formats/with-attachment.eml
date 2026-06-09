@@ -1,0 +1,19 @@
+From: Versand <versand@example.com>
+To: Tester <you@example.com>
+Subject: Mail mit Anhang
+Date: Mon, 09 Jun 2026 10:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="HOPSMDBOUNDARY"
+
+--HOPSMDBOUNDARY
+Content-Type: text/html; charset=utf-8
+
+<p>Diese Mail trägt einen <strong>Anhang</strong>. Der Viewer soll den
+Anhang-Namen in der Liste oben zeigen (read-only, nicht anklickbar).</p>
+--HOPSMDBOUNDARY
+Content-Type: text/plain; name="rezept-notiz.txt"
+Content-Disposition: attachment; filename="rezept-notiz.txt"
+
+Hopfengabe: 60 g Citra @ 0 min.
+Trockenhopfung: 100 g Mosaic.
+--HOPSMDBOUNDARY--
