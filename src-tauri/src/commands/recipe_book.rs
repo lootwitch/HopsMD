@@ -169,7 +169,7 @@ pub fn tap_recipe(path: String) -> Result<RecipeContent, CommandError> {
     if !p.is_file() {
         return Err(CommandError::NotAFile(path));
     }
-    if !is_markdown(&p) {
+    if !is_text_readable(&p) {
         return Err(CommandError::NotMarkdown(path));
     }
     let meta = fs::metadata(&p)?;
@@ -193,7 +193,7 @@ pub fn save_recipe(path: String, content: String) -> Result<(), CommandError> {
     if !p.is_file() {
         return Err(CommandError::NotAFile(path));
     }
-    if !is_markdown(&p) {
+    if !is_text_readable(&p) {
         return Err(CommandError::NotMarkdown(path));
     }
     if content.len() as u64 > MAX_FILE_SIZE {
@@ -541,6 +541,38 @@ mod tests {
         assert!(!is_safe_name(".."));
         assert!(!is_safe_name("a/b"));
         assert!(!is_safe_name("a\\b"));
+    }
+
+    #[test]
+    fn tap_reads_plain_text_files() {
+        let dir = std::env::temp_dir().join("hopsmd_test_tap_text");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.txt");
+        fs::write(&f, "plain text body").unwrap();
+        let out = super::tap_recipe(f.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(out.content, "plain text body");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tap_rejects_email_and_image() {
+        let dir = std::env::temp_dir().join("hopsmd_test_tap_reject");
+        let _ = fs::create_dir_all(&dir);
+        let eml = dir.join("m.eml");
+        fs::write(&eml, "From: a@b\n\nhi").unwrap();
+        assert!(super::tap_recipe(eml.to_string_lossy().into_owned()).is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn save_writes_plain_text_files() {
+        let dir = std::env::temp_dir().join("hopsmd_test_save_text");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("note.txt");
+        fs::write(&f, "old").unwrap();
+        super::save_recipe(f.to_string_lossy().into_owned(), "new".into()).unwrap();
+        assert_eq!(fs::read_to_string(&f).unwrap(), "new");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
