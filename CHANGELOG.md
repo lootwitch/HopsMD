@@ -121,13 +121,12 @@ fullscreen with pan + zoom, pinned Stammsudhaus, content zoom).
   submission
 - In-app updater scaffold via `tauri-plugin-updater` (feature-gated; off
   by default until an ed25519 keypair exists — see `docs/RELEASE.md`)
-- **Ctrl + Mausrad** zoomt jetzt den Inhalt der gerenderten Markdown-Ansicht
-  (Bereich: 60 %–250 %, Schrittweite 10 %), gesteuert über
-  `ContentZoomService`. Der Zoomfaktor wird in `localStorage` persistiert,
-  sodass der Sud beim nächsten Start mit der gleichen Schriftgröße zapft.
-  Sidebar, Toolbar und Filebar bleiben stabil — nur die Lese-Spalte skaliert.
-  Die `max-width` der Lese-Spalte wächst 1:1 mit dem Zoom mit, damit auf
-  großen Displays die Zeichen-pro-Zeile-Proportion erhalten bleibt.
+- **Ctrl + Mouse wheel** now zooms the rendered Markdown content (range
+  60 %–250 %, 10 % steps), driven by `ContentZoomService`. The zoom factor is
+  persisted in `localStorage`, so the next start pours at the same text size.
+  Sidebar, toolbar, and filebar stay stable — only the reading column scales.
+  The reading column's `max-width` grows 1:1 with the zoom so the
+  characters-per-line proportion is preserved on large displays.
 
 ### Fixed
 - Mermaid placeholders showed only "🍺 Maischt…" forever because Angular's
