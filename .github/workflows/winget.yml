@@ -5,17 +5,17 @@ name: winget
 # release ever still needs a manual PR (see docs/RELEASE.md) — winget-releaser
 # only handles version bumps for an already-published package.
 #
-# Required secret: WINGET_PAT — a fine-grained PAT with `public_repo` scope
-# on the fork of microsoft/winget-pkgs (the action will fork on first run if
-# needed).
+# Required secret: WINGET_PAT — a classic PAT with `public_repo` scope (it
+# pushes a branch to your fork of microsoft/winget-pkgs and opens the PR there;
+# the auto-provided GITHUB_TOKEN can't reach that other repo).
 
 on:
   release:
     types: [released]
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to push (omit to use latest published release)'
+      tag:
+        description: 'Release tag to push (e.g. v1.1.0). Omit to use the triggering release.'
         required: false
 
 jobs:
@@ -23,11 +23,23 @@ jobs:
     name: Submit to winget-pkgs
     runs-on: windows-latest
     steps:
+      - name: Resolve version + release tag
+        id: ver
+        shell: bash
+        env:
+          # The git tag is v-prefixed (v1.1.0); winget package versions are not.
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
+        run: |
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
       - name: winget-releaser
         uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: CloudBrew.HopsMD
           # Pick up both the MSI and the NSIS .exe out of the release assets.
           installers-regex: '_x64-setup\.exe$|_x64_en-US\.msi$'
-          version: ${{ github.event.inputs.version || github.event.release.tag_name }}
+          # Submit the unprefixed version (1.1.0) but fetch assets from the
+          # v-prefixed git tag/release (v1.1.0).
+          version: ${{ steps.ver.outputs.version }}
+          release-tag: ${{ steps.ver.outputs.tag }}
           token: ${{ secrets.WINGET_PAT }}

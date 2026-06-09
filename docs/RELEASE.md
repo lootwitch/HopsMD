@@ -86,7 +86,7 @@ Repo → Settings → Secrets and variables → Actions → New repository secre
 |---|---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | contents of `~/.tauri/hopsmd.key` | In-app updater signing |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | the passphrase you set | In-app updater signing |
-| `WINGET_PAT` | fine-grained PAT, `public_repo` scope | winget PR auto-submit |
+| `WINGET_PAT` | classic PAT, `public_repo` scope | winget PR auto-submit |
 
 The `GITHUB_TOKEN` used by tauri-action is auto-provided.
 
