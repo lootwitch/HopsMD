@@ -1,6 +1,6 @@
 [package]
 name = "hopsmd"
-version = "1.0.0"
+version = "1.1.0"
 description = "HopsMD — local Markdown & Mermaid viewer (a CloudBrew side project)"
 authors = ["Ludwig Biermann"]
 edition = "2021"
