@@ -112,6 +112,13 @@ export async function deletePathBridge(path: string): Promise<void> {
   return invokeBridge<void>('delete_path', { path });
 }
 
+export async function readEmailBridge(
+  path: string,
+): Promise<import('../models/email-content.model').EmailContent> {
+  if (!isTauri()) throw new Error('E-Mail lesen ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge('read_email', { path });
+}
+
 /**
  * The application version (from tauri.conf.json) for display in the UI. In
  * browser-only mode there is no shell to ask, so we report a dev marker.
