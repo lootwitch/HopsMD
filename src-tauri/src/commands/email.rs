@@ -107,7 +107,21 @@ fn read_eml(p: &std::path::Path) -> Result<EmailContent, CommandError> {
     let subject = msg.subject().unwrap_or_default().to_string();
     let date = msg.date().map(|d| d.to_rfc3339()).unwrap_or_default();
 
-    let html_body = msg.body_html(0).map(|c| c.into_owned());
+    // Only surface an HTML body when the message actually carries a `text/html`
+    // part. mail-parser also lists a text/plain part as an "html body" (it can
+    // synthesise HTML from text), so `html_body_count()` is not enough — we must
+    // check the real subtype, otherwise plain mails never reach the viewer's
+    // monospace text fallback.
+    let has_html_part = msg.html_bodies().any(|part| {
+        part.content_type()
+            .and_then(|ct| ct.subtype())
+            .is_some_and(|sub| sub.eq_ignore_ascii_case("html"))
+    });
+    let html_body = if has_html_part {
+        msg.body_html(0).map(|c| c.into_owned())
+    } else {
+        None
+    };
     let text_body = msg.body_text(0).map(|c| c.into_owned());
 
     let attachments = msg
@@ -272,6 +286,54 @@ mod tests {
         fs::write(&f, b"not really a png").unwrap();
 
         assert!(read_email(f.to_string_lossy().into_owned()).is_err());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn text_only_eml_has_no_html_body() {
+        // A text/plain-only message must NOT report an HTML body — the viewer
+        // relies on `html_body == None` to fall back to its monospace text view.
+        // (mail-parser's body_html() would otherwise synthesise HTML from text.)
+        let dir = std::env::temp_dir().join("hopsmd_test_email_textonly");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("plain.eml");
+        let raw = "From: a@b.com\r\n\
+                   Subject: Plain\r\n\
+                   Content-Type: text/plain; charset=utf-8\r\n\
+                   \r\n\
+                   Just text, no markup.\r\n";
+        fs::write(&f, raw).unwrap();
+
+        let out = read_email(f.to_string_lossy().into_owned()).unwrap();
+        assert!(out.html_body.is_none(), "html_body was {:?}", out.html_body);
+        assert!(
+            out.text_body.as_deref().unwrap_or_default().contains("Just text"),
+            "text_body was {:?}",
+            out.text_body
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn html_eml_has_html_body() {
+        let dir = std::env::temp_dir().join("hopsmd_test_email_html");
+        let _ = fs::create_dir_all(&dir);
+        let f = dir.join("rich.eml");
+        let raw = "From: a@b.com\r\n\
+                   Subject: Rich\r\n\
+                   Content-Type: text/html; charset=utf-8\r\n\
+                   \r\n\
+                   <p>Hello <strong>world</strong></p>\r\n";
+        fs::write(&f, raw).unwrap();
+
+        let out = read_email(f.to_string_lossy().into_owned()).unwrap();
+        assert!(
+            out.html_body.as_deref().unwrap_or_default().contains("<strong>"),
+            "html_body was {:?}",
+            out.html_body
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }
