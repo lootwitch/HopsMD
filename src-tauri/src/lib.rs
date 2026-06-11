@@ -30,6 +30,7 @@ pub fn run() {
             commands::recipe_book::create_folder,
             commands::recipe_book::rename_path,
             commands::recipe_book::delete_path,
+            commands::recipe_book::move_path,
             commands::email::read_email,
             commands::watcher::watch_brewhouse,
             commands::watcher::set_open_recipe,

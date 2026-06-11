@@ -147,6 +147,8 @@ pub enum CommandError {
     Watch(String),
     #[error("E-Mail konnte nicht gelesen werden: {0}")]
     EmailParse(String),
+    #[error("Ordner kann nicht in sich selbst verschoben werden: {0}")]
+    MoveIntoSelf(String),
 }
 
 impl serde::Serialize for CommandError {
@@ -302,6 +304,36 @@ pub fn delete_path(path: String) -> Result<(), CommandError> {
         fs::remove_file(&p)?;
     }
     Ok(())
+}
+
+/// Move a file or folder into another directory, keeping its name. Used by
+/// the tree's drag & drop. Refuses to overwrite and refuses to move a folder
+/// into its own subtree.
+#[tauri::command]
+pub fn move_path(from: String, to_dir: String) -> Result<String, CommandError> {
+    let src = PathBuf::from(&from);
+    if !src.exists() {
+        return Err(CommandError::NotFound(from));
+    }
+    let dest_dir = PathBuf::from(&to_dir);
+    if !dest_dir.is_dir() {
+        return Err(CommandError::NotADirectory(to_dir));
+    }
+    // Canonical forms make the cycle check robust against `..`, casing and
+    // separator artifacts (both sides get Windows' `\\?\` prefix alike).
+    if src.is_dir() {
+        let src_canon = src.canonicalize()?;
+        let dest_canon = dest_dir.canonicalize()?;
+        if dest_canon.starts_with(&src_canon) {
+            return Err(CommandError::MoveIntoSelf(to_dir));
+        }
+    }
+    let dest = dest_dir.join(file_name(&src));
+    if dest.exists() {
+        return Err(CommandError::AlreadyExists(dest.to_string_lossy().into_owned()));
+    }
+    fs::rename(&src, &dest)?;
+    Ok(dest.to_string_lossy().into_owned())
 }
 
 fn modified_at_epoch_ms(meta: &fs::Metadata) -> Option<i64> {
@@ -621,5 +653,92 @@ mod tests {
 
         // Empty string is unchanged.
         assert_eq!(strip_bom(String::new()), "");
+    }
+
+    #[test]
+    fn move_file_into_subfolder() {
+        let dir = std::env::temp_dir().join("hopsmd_test_move_file");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        let f = dir.join("note.md");
+        fs::write(&f, "# hi").unwrap();
+        let new_path = super::move_path(
+            f.to_string_lossy().into_owned(),
+            dir.join("sub").to_string_lossy().into_owned(),
+        )
+        .unwrap();
+        assert!(!f.exists());
+        let dest = dir.join("sub").join("note.md");
+        assert!(dest.exists());
+        assert_eq!(new_path, dest.to_string_lossy());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn move_folder_into_folder() {
+        let dir = std::env::temp_dir().join("hopsmd_test_move_folder");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("a")).unwrap();
+        fs::create_dir_all(dir.join("b")).unwrap();
+        fs::write(dir.join("a").join("x.md"), "x").unwrap();
+        super::move_path(
+            dir.join("a").to_string_lossy().into_owned(),
+            dir.join("b").to_string_lossy().into_owned(),
+        )
+        .unwrap();
+        assert!(dir.join("b").join("a").join("x.md").exists());
+        assert!(!dir.join("a").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn move_rejects_name_conflict() {
+        let dir = std::env::temp_dir().join("hopsmd_test_move_conflict");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        fs::write(dir.join("note.md"), "src").unwrap();
+        fs::write(dir.join("sub").join("note.md"), "existing").unwrap();
+        let err = super::move_path(
+            dir.join("note.md").to_string_lossy().into_owned(),
+            dir.join("sub").to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(matches!(err, super::CommandError::AlreadyExists(_)));
+        // Source must be untouched after a refused move.
+        assert_eq!(fs::read_to_string(dir.join("note.md")).unwrap(), "src");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn move_rejects_folder_into_own_descendant() {
+        let dir = std::env::temp_dir().join("hopsmd_test_move_cycle");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("a").join("inner")).unwrap();
+        let err = super::move_path(
+            dir.join("a").to_string_lossy().into_owned(),
+            dir.join("a").join("inner").to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(matches!(err, super::CommandError::MoveIntoSelf(_)));
+        assert!(dir.join("a").join("inner").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn move_into_current_parent_reports_conflict() {
+        // dest == src, so the AlreadyExists guard fires; nothing moves. The
+        // frontend filters this no-op out before calling, this is the backstop.
+        let dir = std::env::temp_dir().join("hopsmd_test_move_noop");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("note.md"), "x").unwrap();
+        let err = super::move_path(
+            dir.join("note.md").to_string_lossy().into_owned(),
+            dir.to_string_lossy().into_owned(),
+        )
+        .unwrap_err();
+        assert!(matches!(err, super::CommandError::AlreadyExists(_)));
+        assert!(dir.join("note.md").exists());
+        let _ = fs::remove_dir_all(&dir);
     }
 }
