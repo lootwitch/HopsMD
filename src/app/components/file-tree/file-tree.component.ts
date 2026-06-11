@@ -259,7 +259,9 @@ export class FileTreeComponent {
   protected readonly isActive = computed(() => {
     const n = this.node();
     const sel = this.state.selectedPath();
-    return !!n && !n.isDir && n.path === sel;
+    // Normalized compare: the selected path can carry forward slashes (wiki
+    // links, drag-&-drop move targets) while tree paths are native.
+    return !!n && !n.isDir && sel !== null && normalize(n.path) === normalize(sel);
   });
 
   // --- inline editing state ---
@@ -407,7 +409,8 @@ export class FileTreeComponent {
     const dir = n.isDir ? n.path : dirname(n.path);
     if (mode === 'rename') {
       const newPath = await this.state.renameEntry(n.path, name);
-      if (newPath && this.state.selectedPath() === n.path) {
+      const sel = this.state.selectedPath();
+      if (newPath && sel !== null && normalize(sel) === normalize(n.path)) {
         await this.state.openFileByPath(newPath);
       }
     } else if (mode === 'new-file') {

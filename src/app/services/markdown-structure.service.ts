@@ -337,7 +337,7 @@ export class MarkdownStructureService {
   async deleteEntry(path: string): Promise<void> {
     try {
       await deletePathBridge(path);
-      if (this._selectedPath() === path) this.closeRecipe();
+      if (this.isSelected(path)) this.closeRecipe();
     } catch (err) {
       this._error.set(this.describe(err));
     }
@@ -351,12 +351,22 @@ export class MarkdownStructureService {
     this._lastModified.set(result.modifiedAt ?? Date.now());
   }
 
+  /**
+   * Separator-insensitive "is this the open file?" check. Selected paths can
+   * carry forward slashes (wiki links, drag-&-drop move targets) while tree
+   * and watcher paths are native — compare normalized, never raw.
+   */
+  private isSelected(path: string): boolean {
+    const sel = this._selectedPath();
+    return sel !== null && normalize(sel) === normalize(path);
+  }
+
   private onRecipeChanged(path: string): void {
-    if (path !== this._selectedPath()) return;
+    if (!this.isSelected(path)) return;
     const kind = this._selectedKind();
     if (kind === 'email') {
       void readEmailBridge(path)
-        .then((e) => { if (path === this._selectedPath()) this._selectedEmail.set(e); })
+        .then((e) => { if (this.isSelected(path)) this._selectedEmail.set(e); })
         .catch((err) => this._error.set(this.describe(err)));
       return;
     }
@@ -364,7 +374,7 @@ export class MarkdownStructureService {
       this._assetReloadCounter.update((n) => n + 1);
       const token = this._assetReloadCounter();
       void toAssetUrl(path).then((u) => {
-        if (path === this._selectedPath()) this._selectedImageUrl.set(`${u}?t=${token}`);
+        if (this.isSelected(path)) this._selectedImageUrl.set(`${u}?t=${token}`);
       });
       return;
     }
@@ -374,13 +384,13 @@ export class MarkdownStructureService {
       this._assetReloadCounter.update((n) => n + 1);
       const token = this._assetReloadCounter();
       void toAssetUrl(path).then((u) => {
-        if (path === this._selectedPath()) this._selectedPdfUrl.set(`${u}?t=${token}`);
+        if (this.isSelected(path)) this._selectedPdfUrl.set(`${u}?t=${token}`);
       });
       return;
     }
     void invokeBridge<RecipeContent>('tap_recipe', { path })
       .then((result) => {
-        if (path !== this._selectedPath()) return; // raced selection change
+        if (!this.isSelected(path)) return; // raced selection change
         // Echo-cancel: identical content means this is our own save bouncing
         // back through the watcher — ignore it.
         if (result.content === this._selectedContent()) return;
