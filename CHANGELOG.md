@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Move files and folders by drag & drop in the sidebar tree. Dropping onto a
+  folder moves into it; dropping onto a file moves next to it. Conflicts are
+  refused (never overwrites), and a dwell on a closed folder springs it open.
+
 ## [1.2.0] - 2026-06-11
 
 ### Added
