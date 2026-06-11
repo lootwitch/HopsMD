@@ -52,7 +52,8 @@ export class MarkdownStructureService {
   private readonly _selectedKind = signal<FileKind>('markdown');
   private readonly _selectedEmail = signal<EmailContent | null>(null);
   private readonly _selectedImageUrl = signal<string | null>(null);
-  private readonly _imageReloadCounter = signal<number>(0);
+  private readonly _selectedPdfUrl = signal<string | null>(null);
+  private readonly _assetReloadCounter = signal<number>(0);
 
   // --- public read-only views ---
   readonly brewhouse = this._brewhouse.asReadonly();
@@ -68,6 +69,7 @@ export class MarkdownStructureService {
   readonly selectedKind = this._selectedKind.asReadonly();
   readonly selectedEmail = this._selectedEmail.asReadonly();
   readonly selectedImageUrl = this._selectedImageUrl.asReadonly();
+  readonly selectedPdfUrl = this._selectedPdfUrl.asReadonly();
   readonly editable = computed(() => isEditableKind(this._selectedKind()));
   readonly dirty = computed(() => this.editable() && this._mode() === 'editing' && this._editBuffer() !== this._selectedContent());
 
@@ -217,9 +219,10 @@ export class MarkdownStructureService {
     this._selectedPath.set(path);
     const kind = classify(path);
     this._selectedKind.set(kind);
-    // Reset other kinds' payloads so a stale email/image never shows.
+    // Reset other kinds' payloads so a stale email/image/pdf never shows.
     this._selectedEmail.set(null);
     this._selectedImageUrl.set(null);
+    this._selectedPdfUrl.set(null);
     this._mode.set('viewing');
     this._editBuffer.set('');
     try {
@@ -229,8 +232,11 @@ export class MarkdownStructureService {
       } else if (kind === 'image') {
         this._selectedContent.set('');
         this._selectedImageUrl.set(await toAssetUrl(path));
+      } else if (kind === 'pdf') {
+        this._selectedContent.set('');
+        this._selectedPdfUrl.set(await toAssetUrl(path));
       } else {
-        await this.tap(path); // markdown + text
+        await this.tap(path); // markdown, text, json, http
       }
       try {
         await invokeBridge<void>('set_open_recipe', { path });
@@ -261,6 +267,7 @@ export class MarkdownStructureService {
     this._selectedKind.set('markdown');
     this._selectedEmail.set(null);
     this._selectedImageUrl.set(null);
+    this._selectedPdfUrl.set(null);
     if (isTauri()) {
       void invokeBridge<void>('set_open_recipe', { path: null }).catch(() => undefined);
     }
@@ -321,10 +328,20 @@ export class MarkdownStructureService {
       return;
     }
     if (kind === 'image') {
-      this._imageReloadCounter.update((n) => n + 1);
-      const token = this._imageReloadCounter();
+      this._assetReloadCounter.update((n) => n + 1);
+      const token = this._assetReloadCounter();
       void toAssetUrl(path).then((u) => {
         if (path === this._selectedPath()) this._selectedImageUrl.set(`${u}?t=${token}`);
+      });
+      return;
+    }
+    if (kind === 'pdf') {
+      // Same cache-buster trick as images: an identical URL would not make
+      // the iframe reload the changed file.
+      this._assetReloadCounter.update((n) => n + 1);
+      const token = this._assetReloadCounter();
+      void toAssetUrl(path).then((u) => {
+        if (path === this._selectedPath()) this._selectedPdfUrl.set(`${u}?t=${token}`);
       });
       return;
     }
