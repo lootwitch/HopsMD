@@ -7,6 +7,7 @@ import markedKatex from 'marked-katex-extension';
 import { definitionListExtension } from '../core/markdown-extensions/definition-list.extension';
 import { emojiExtension } from '../core/markdown-extensions/emoji.extension';
 import { wikiLinkExtension } from '../core/markdown-extensions/wikilink.extension';
+import { loadHljs } from '../core/highlight-loader';
 import { dirname, resolveRelative } from '../core/path-utils';
 import { toAssetUrl } from '../core/tauri-bridge';
 import { I18nService } from './i18n.service';
@@ -68,16 +69,6 @@ export class MarkdownParserService {
     pedantic: false,
   });
 
-  /** Singleton promise for the lazily loaded highlight.js common bundle. */
-  private hljsPromise: Promise<typeof import('highlight.js').default> | null = null;
-
-  private loadHljs(): Promise<typeof import('highlight.js').default> {
-    if (!this.hljsPromise) {
-      this.hljsPromise = import('highlight.js/lib/common').then((m) => m.default);
-    }
-    return this.hljsPromise;
-  }
-
   constructor() {
     this.marked.use({
       renderer: {
@@ -91,7 +82,7 @@ export class MarkdownParserService {
         if (token.type !== 'code') return;
         const lang = (token.lang ?? '').trim().split(/\s+/)[0].toLowerCase();
         if (lang === 'mermaid') return; // diagrams render separately
-        const hljs = await this.loadHljs();
+        const hljs = await loadHljs();
         try {
           const result =
             lang && hljs.getLanguage(lang)
