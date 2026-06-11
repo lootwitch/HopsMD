@@ -10,11 +10,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { dirname } from '../../core/path-utils';
+import { dirname, normalize } from '../../core/path-utils';
 import type { RecipeNode } from '../../models/recipe-node.model';
 import { ContextMenuService, FileOpAction } from '../../services/context-menu.service';
 import { I18nService } from '../../services/i18n.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
+import { TreeDragService } from '../../services/tree-drag.service';
 
 /**
  * Recursive directory tree. Each node is rendered by this same component —
@@ -30,7 +31,7 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
   template: `
     @let n = node();
     @if (n) {
-      <div class="row" [class.is-dir]="n.isDir" [class.is-active]="isActive()">
+      <div class="row" [class.is-dir]="n.isDir" [class.is-active]="isActive()" [class.drop-target]="dropHover()">
         @if (n.isDir) {
           @if (inlineMode() === 'rename') {
             <div class="entry folder inline-edit-row">
@@ -51,8 +52,14 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
             <button
               type="button"
               class="entry folder"
+              draggable="true"
               (click)="toggle()"
               (contextmenu)="onContextMenu($event, n)"
+              (dragstart)="onDragStart($event, n)"
+              (dragend)="onDragEnd()"
+              (dragover)="onDragOver($event, n)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event, n)"
               [attr.aria-expanded]="open()"
               [title]="n.path"
             >
@@ -84,8 +91,14 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
             <button
               type="button"
               class="entry file"
+              draggable="true"
               (click)="select()"
               (contextmenu)="onContextMenu($event, n)"
+              (dragstart)="onDragStart($event, n)"
+              (dragend)="onDragEnd()"
+              (dragover)="onDragOver($event, n)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event, n)"
               [title]="n.path"
             >
               <span class="caret placeholder">·</span>
@@ -154,6 +167,11 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
       .row.is-active .entry.file {
         background: rgba(245, 197, 66, 0.18);
         color: var(--hops-foam);
+      }
+      .row.drop-target > .entry {
+        background: rgba(245, 197, 66, 0.16);
+        outline: 1px dashed var(--hops-foam, #f5c542);
+        outline-offset: -1px;
       }
       .caret {
         display: inline-block;
@@ -232,6 +250,7 @@ export class FileTreeComponent {
   private readonly state = inject(MarkdownStructureService);
   private readonly contextMenu = inject(ContextMenuService);
   private readonly i18n = inject(I18nService);
+  private readonly drag = inject(TreeDragService);
 
   // Auto-open the root level so the user immediately sees the first layer.
   private readonly _open = signal<boolean>(false);
@@ -248,6 +267,10 @@ export class FileTreeComponent {
   protected readonly draft = signal<string>('');
   private readonly inlineInput = viewChild<ElementRef<HTMLInputElement>>('inlineInput');
 
+  // --- drag & drop state ---
+  protected readonly dropHover = signal<boolean>(false);
+  private springTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor() {
     // Register as an action handler for file operations triggered from the
     // context menu. The service fans out to all registered handlers; each
@@ -257,7 +280,11 @@ export class FileTreeComponent {
       if (!myNode || myNode.path !== node.path) return;
       this.handleAction(node, action);
     });
-    inject(DestroyRef).onDestroy(unregister);
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(unregister);
+    // A node can be destroyed mid-hover (watcher re-scan during a drag) —
+    // make sure the spring-load timer never fires on a dead instance.
+    destroyRef.onDestroy(() => this.clearDropHover());
 
     // Focus the inline input once it has been inserted into the DOM. The HTML
     // `autofocus` attribute is ignored for elements Angular inserts dynamically
@@ -278,6 +305,74 @@ export class FileTreeComponent {
 
   protected onContextMenu(event: MouseEvent, n: RecipeNode): void {
     this.contextMenu.open(n, event);
+  }
+
+  // --- drag & drop (move within the tree) ---
+
+  protected onDragStart(event: DragEvent, n: RecipeNode): void {
+    this.drag.start(n);
+    event.dataTransfer?.setData('text/plain', n.path);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  protected onDragEnd(): void {
+    this.drag.clear();
+    this.clearDropHover();
+  }
+
+  protected onDragOver(event: DragEvent, n: RecipeNode): void {
+    if (!this.isValidDropTarget(n)) return; // no preventDefault → drop refused
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (!this.dropHover()) {
+      this.dropHover.set(true);
+      // Spring-loaded folders: dwelling on a closed folder opens it.
+      if (n.isDir && !this.open()) {
+        this.springTimer = setTimeout(() => this._open.set(true), 700);
+      }
+    }
+  }
+
+  protected onDragLeave(event: DragEvent): void {
+    // dragleave also fires when entering a child span; ignore those.
+    const related = event.relatedTarget as Node | null;
+    if (related && (event.currentTarget as Node).contains(related)) return;
+    this.clearDropHover();
+  }
+
+  protected async onDrop(event: DragEvent, n: RecipeNode): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    const src = this.drag.dragged();
+    const valid = this.isValidDropTarget(n);
+    this.drag.clear();
+    this.clearDropHover();
+    if (!src || !valid) return;
+    await this.state.moveEntry(src.path, this.targetDirOf(n));
+  }
+
+  /** Folder rows accept into themselves; file rows accept into their parent. */
+  private targetDirOf(n: RecipeNode): string {
+    return n.isDir ? n.path : dirname(n.path);
+  }
+
+  private isValidDropTarget(n: RecipeNode): boolean {
+    const src = this.drag.dragged();
+    if (!src) return false;
+    const dir = normalize(this.targetDirOf(n));
+    const srcPath = normalize(src.path);
+    if (dir === srcPath) return false; // folder onto itself
+    if (dir === dirname(srcPath)) return false; // no-op: already there
+    if (src.isDir && (dir + '/').startsWith(srcPath + '/')) return false; // own subtree
+    return true;
+  }
+
+  private clearDropHover(): void {
+    this.dropHover.set(false);
+    if (this.springTimer !== null) {
+      clearTimeout(this.springTimer);
+      this.springTimer = null;
+    }
   }
 
   // --- inline input methods ---
