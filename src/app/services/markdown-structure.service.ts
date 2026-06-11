@@ -6,12 +6,14 @@ import {
   invokeBridge,
   isTauri,
   listenBridge,
+  movePathBridge,
   pickBrewhouse,
   readEmailBridge,
   renamePathBridge,
   saveRecipeBridge,
   toAssetUrl,
 } from '../core/tauri-bridge';
+import { normalize } from '../core/path-utils';
 import { classify, isEditableKind, type FileKind } from '../core/file-kind';
 import type { EmailContent } from '../models/email-content.model';
 import type { RecipeContent } from '../models/recipe-content.model';
@@ -295,6 +297,37 @@ export class MarkdownStructureService {
   async renameEntry(from: string, toName: string): Promise<string | null> {
     try {
       return await renamePathBridge(from, toName);
+    } catch (err) {
+      this._error.set(this.describe(err));
+      return null;
+    }
+  }
+
+  /**
+   * Move a file or folder into another directory (tree drag & drop). If the
+   * open file is the moved entry — or lives inside a moved folder — it is
+   * re-opened at its new path; a dirty open file blocks the move entirely.
+   */
+  async moveEntry(from: string, toDir: string): Promise<string | null> {
+    const sel = this._selectedPath();
+    const normFrom = normalize(from);
+    const normSel = sel ? normalize(sel) : null;
+    const affectsOpen =
+      normSel !== null && (normSel === normFrom || normSel.startsWith(normFrom + '/'));
+    if (affectsOpen && this.dirty()) {
+      this._error.set('Ungespeicherte Änderungen — bitte zuerst speichern oder verwerfen.');
+      return null;
+    }
+    try {
+      const newPath = await movePathBridge(from, toDir);
+      if (affectsOpen && normSel) {
+        const newSel =
+          normSel === normFrom
+            ? newPath
+            : normalize(newPath) + normSel.slice(normFrom.length);
+        await this.openFileByPath(newSel);
+      }
+      return newPath;
     } catch (err) {
       this._error.set(this.describe(err));
       return null;
