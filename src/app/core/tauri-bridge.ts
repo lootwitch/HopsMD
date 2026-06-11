@@ -112,6 +112,12 @@ export async function deletePathBridge(path: string): Promise<void> {
   return invokeBridge<void>('delete_path', { path });
 }
 
+/** Move a file or folder into `toDir` (a destination *directory*, not the full target path). */
+export async function movePathBridge(from: string, toDir: string): Promise<string> {
+  if (!isTauri()) throw new Error('Verschieben ist nur im Tauri-Shell verfügbar.');
+  return invokeBridge<string>('move_path', { from, toDir });
+}
+
 export async function readEmailBridge(
   path: string,
 ): Promise<import('../models/email-content.model').EmailContent> {
