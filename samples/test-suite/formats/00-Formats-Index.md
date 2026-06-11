@@ -6,8 +6,9 @@ Diese Seite bündelt die Nicht-Markdown-Formate. Klick jede Datei an (Links hier
 oder direkt im Dateibaum) und prüfe das erwartete Verhalten.
 
 > [!NOTE]
-> Markdown & diese Formate teilen sich denselben Dateibaum. Text ist
-> **bearbeitbar** (wie `.md`), E-Mail und Bild sind **read-only** (kein ✎-Button).
+> Markdown & diese Formate teilen sich denselben Dateibaum. Text, JSON und
+> HTTP sind **bearbeitbar** (wie `.md`); E-Mail, Bild und PDF sind
+> **read-only** (kein ✎-Button).
 
 ---
 
@@ -19,6 +20,50 @@ oder direkt im Dateibaum) und prüfe das erwartete Verhalten.
   letzte `#`-Zeile darf **nicht** zur Überschrift werden.
 
 **Prüfen:** Monospace-Darstellung · ✎-Button vorhanden · Bearbeiten & Speichern · `•` Dirty-Marker.
+
+---
+
+## 🌳 JSON (bearbeitbar)
+
+- [[sample.json|sample.json]] — valides, verschachteltes JSON → **aufklappbarer
+  Baum**. Enthält alle Typen (String/Zahl/Bool/`null`/Objekt/Array, leere
+  Container, Exponent, negative Zahl) und Umlaute/Escapes in `notes`.
+- [[invalid.json|invalid.json]] — absichtlich kaputt (trailing comma + fehlende
+  Klammer) → Fallback auf **rohen, syntaxhervorgehobenen Text** mit Hinweisbanner.
+- [[large.json|large.json]] — > 1 MiB (per `gen-testdata.mjs` erzeugt) →
+  Fallback auf **reine Textanzeige ohne Highlighting** (sonst friert der
+  Webview ein).
+
+**Prüfen:** Knoten auf-/zuklappen · ✎ / **Ctrl+E** öffnet CodeMirror mit
+JSON-Syntax · Speichern & `•` Dirty-Marker · beide Fallbacks zeigen den Inhalt
+statt einer leeren Seite.
+
+---
+
+## 📡 HTTP-Requests (bearbeitbar, Anzeige als Request-Karten)
+
+- [[sample.http|sample.http]] — Datei-Variablen (`@host`, …), benannte
+  `###`-Abschnitte, GET mit Query/Headern, POST mit JSON-Body (Body muss
+  JSON-hervorgehoben sein), PUT mit HTTP-Version, **impliziter GET** (nackte
+  URL), DELETE mit `//`-Kommentar davor und ein **Raw-Block** (Abschnitt ohne
+  Request — darf den Parser nicht brechen).
+- [[queries.rest|queries.rest]] — gleiche Syntax; prüft, dass die
+  **`.rest`-Endung** erkannt wird.
+
+**Prüfen:** Methoden-Badges (GET/POST/PUT/DELETE) · Header-Tabelle ·
+Variablen-Liste oben · Raw-Block als Textkarte · ✎ öffnet CodeMirror; Karten
+sind reine Anzeige (kein „Senden“-Button).
+
+---
+
+## 📄 PDF (read-only)
+
+- [[sample.pdf|sample.pdf]] — minimales Ein-Seiten-PDF (per `gen-testdata.mjs`
+  erzeugt). Muss im **iframe über das Asset-Protokoll** rendern und den
+  Smoke-Test-Text zeigen.
+
+**Prüfen:** Plattform-PDF-Renderer erscheint · **kein** ✎-Button · unter Linux
+(webkit2gtk) ist keine Inline-Anzeige zu erwarten — das ist akzeptiert.
 
 ---
 

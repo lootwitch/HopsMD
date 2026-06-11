@@ -1,0 +1,64 @@
+{
+  "brewery": "HopsMD Hausbrauerei",
+  "established": 2024,
+  "rating": 4.7,
+  "organic": true,
+  "closedOn": null,
+  "address": {
+    "street": "Hopfenallee 12",
+    "city": "Münchnerbräu",
+    "zip": "80331",
+    "geo": {
+      "lat": 48.137154,
+      "lon": 11.576124
+    }
+  },
+  "recipes": [
+    {
+      "name": "Kölsch Klassik",
+      "style": "Kölsch",
+      "abv": 4.8,
+      "ibu": 22,
+      "hops": ["Hallertauer Mittelfrüh", "Tettnanger"],
+      "fermentation": {
+        "temperatureCelsius": 14,
+        "days": 21,
+        "secondary": false
+      }
+    },
+    {
+      "name": "Citra Smash",
+      "style": "Pale Ale",
+      "abv": 5.6,
+      "ibu": 45,
+      "hops": ["Citra"],
+      "fermentation": {
+        "temperatureCelsius": 19,
+        "days": 12,
+        "secondary": true
+      }
+    },
+    {
+      "name": "Rauchbock \"Dunkle Nacht\"",
+      "style": "Rauchbock",
+      "abv": 7.2,
+      "ibu": 28,
+      "hops": [],
+      "fermentation": null
+    }
+  ],
+  "inventory": {
+    "malts": {
+      "pilsner": { "kg": 25.5, "lot": "P-2026-04" },
+      "munich": { "kg": 12.0, "lot": "M-2026-02" },
+      "smoked": { "kg": 3.25, "lot": null }
+    },
+    "emptyShelf": {},
+    "kegs": [50, 30, 30, 20, 10],
+    "labels": []
+  },
+  "notes": "Sonderzeichen-Check: äöüß €µ — \"quotes\" und \\backslash\\ und <tags> bleiben escaped.",
+  "scientific": 6.022e23,
+  "negative": -273.15,
+  "bigInt": 9007199254740991
+}

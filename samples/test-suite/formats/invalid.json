@@ -1,0 +1,11 @@
+{
+  "brewery": "HopsMD Hausbrauerei",
+  "problem": "Diese Datei ist absichtlich kaputt",
+  "recipes": [
+    { "name": "Kölsch Klassik", "abv": 4.8 },
+    { "name": "Citra Smash", "abv": 5.6 },
+  ],
+  "trailingComma": true,
+  "unclosed": {
+    "missing": "die schließende Klammer des Wurzelobjekts fehlt"
+}

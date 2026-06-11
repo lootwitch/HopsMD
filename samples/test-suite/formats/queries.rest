@@ -1,0 +1,13 @@
+# Gleiche Syntax wie .http — prüft, dass die .rest-Endung erkannt wird.
+
+@base = https://api.hopsmd.example/v1
+
+### Lagerbestand abfragen
+GET {{base}}/inventory/malts
+Accept: application/json
+
+### Fass-Status melden
+POST {{base}}/kegs/7/status
+Content-Type: application/json
+
+{ "status": "empty", "reportedBy": "Braumeister" }

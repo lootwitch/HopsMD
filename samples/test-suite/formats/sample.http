@@ -1,0 +1,45 @@
+# HopsMD .http-Beispieldatei (VS-Code-REST-Client-Syntax)
+# Datei-Variablen gelten für alle Requests darunter.
+
+@host = https://api.hopsmd.example
+@apiVersion = v1
+@token = bitte-nicht-committen-1234
+
+### Alle Rezepte auflisten
+GET {{host}}/{{apiVersion}}/recipes?style=k%C3%B6lsch&limit=10 HTTP/1.1
+Accept: application/json
+Authorization: Bearer {{token}}
+X-Request-Id: smoke-test-001
+
+### Neues Rezept anlegen (JSON-Body)
+POST {{host}}/{{apiVersion}}/recipes
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Citra Smash",
+  "style": "Pale Ale",
+  "abv": 5.6,
+  "hops": ["Citra"],
+  "notes": "Umlaute im Body: äöüß"
+}
+
+### Rezept aktualisieren
+PUT {{host}}/{{apiVersion}}/recipes/42 HTTP/2
+Content-Type: application/json
+If-Match: "etag-abc123"
+
+{ "abv": 5.8 }
+
+### Impliziter GET (nackte URL, REST-Client-Konvention)
+{{host}}/{{apiVersion}}/health
+
+### Rezept löschen
+// Zeilen-Kommentare vor der Request-Zeile sind erlaubt.
+DELETE {{host}}/{{apiVersion}}/recipes/42
+Authorization: Bearer {{token}}
+
+### Notizen (kein Request — muss als Raw-Block erscheinen)
+Dieser Abschnitt ist absichtlich kein HTTP-Request.
+Der lenient Parser zeigt ihn als rohen Textblock, statt zu scheitern.
+TODO: Brausitzung für Juli planen.
