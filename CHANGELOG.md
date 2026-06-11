@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-11
+
 ### Added
 - **Structured viewers for `.json`, `.http`/`.rest`, and `.pdf`** — the recipe
   tree now lists and opens JSON files (collapsible tree view; invalid files
@@ -145,7 +147,8 @@ fullscreen with pan + zoom, pinned Stammsudhaus, content zoom).
   `effect + queueMicrotask` to `afterRenderEffect` for reliable DOM
   timing.
 
-[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/lootwitch/HopsMD/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lootwitch/HopsMD/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lootwitch/HopsMD/releases/tag/v1.0.0
 [0.1.1]: https://github.com/lootwitch/HopsMD/releases/tag/v0.1.1
