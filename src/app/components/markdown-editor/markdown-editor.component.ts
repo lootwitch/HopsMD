@@ -26,6 +26,9 @@ import {
 export class MarkdownEditorComponent {
   /** Initial document; the editor owns its state after creation. */
   readonly content = input<string>('');
+  /** Syntax mode; read once at editor creation (the component is recreated
+   *  per edit session, so a live binding is unnecessary). */
+  readonly language = input<'markdown' | 'json' | 'http'>('markdown');
   /** Emitted on every document change. */
   readonly contentChange = output<string>();
 
@@ -48,7 +51,7 @@ export class MarkdownEditorComponent {
         { markdown },
         { languages },
         { defaultKeymap, history, historyKeymap },
-        { syntaxHighlighting, defaultHighlightStyle },
+        { syntaxHighlighting, defaultHighlightStyle, LanguageDescription },
       ] = await Promise.all([
         import('@codemirror/view'),
         import('@codemirror/state'),
@@ -79,13 +82,21 @@ export class MarkdownEditorComponent {
         if (u.docChanged) this.contentChange.emit(u.state.doc.toString());
       });
 
+      // Markdown gets the full lang-markdown package (with embedded code
+      // languages); json/http resolve through language-data's lazy registry.
+      const langName = this.language();
+      const langExtension =
+        langName === 'markdown'
+          ? markdown({ codeLanguages: languages })
+          : ((await LanguageDescription.matchLanguageName(languages, langName, true)?.load()) ?? []);
+
       const state = EditorState.create({
         doc: this.content(),
         extensions: [
           lineNumbers(),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          markdown({ codeLanguages: languages }),
+          langExtension,
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           EditorView.lineWrapping,
           theme,
