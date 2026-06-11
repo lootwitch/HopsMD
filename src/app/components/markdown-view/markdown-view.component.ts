@@ -24,6 +24,9 @@ import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.comp
 import { TocComponent } from '../toc/toc.component';
 import { EmailViewComponent } from '../email-view/email-view.component';
 import { ImageViewComponent } from '../image-view/image-view.component';
+import { JsonViewComponent } from '../json-view/json-view.component';
+import { HttpViewComponent } from '../http-view/http-view.component';
+import { PdfViewComponent } from '../pdf-view/pdf-view.component';
 import { classify } from '../../core/file-kind';
 
 /** How often the "Updated X ago" label re-evaluates. 5 s is fine-grained
@@ -48,7 +51,15 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 @Component({
   selector: 'hops-markdown-view',
   standalone: true,
-  imports: [TocComponent, MarkdownEditorComponent, EmailViewComponent, ImageViewComponent],
+  imports: [
+    TocComponent,
+    MarkdownEditorComponent,
+    EmailViewComponent,
+    ImageViewComponent,
+    JsonViewComponent,
+    HttpViewComponent,
+    PdfViewComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (state.error(); as err) {
@@ -119,6 +130,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         <hops-markdown-editor
           class="editor-pane"
           [content]="state.editBuffer()"
+          [language]="editorLanguage()"
           (contentChange)="state.updateBuffer($event)"
         />
       </div>
@@ -138,6 +150,21 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
           <div class="view-grid" [hidden]="!state.selectedContent()">
             <pre class="hops-plaintext" #host (click)="onContentClick($event)">{{ state.selectedContent() }}</pre>
           </div>
+        }
+        @case ('json') {
+          @if (state.selectedContent()) {
+            <hops-json-view [content]="state.selectedContent()" />
+          }
+        }
+        @case ('http') {
+          @if (state.selectedContent()) {
+            <hops-http-view [content]="state.selectedContent()" />
+          }
+        }
+        @case ('pdf') {
+          @if (state.selectedPdfUrl(); as url) {
+            <hops-pdf-view [src]="url" />
+          }
         }
         @default {
           <div class="view-grid" [hidden]="!html()">
@@ -409,6 +436,12 @@ export class MarkdownViewComponent {
   protected readonly fileName = computed(() => {
     const p = this.state.selectedPath();
     return p ? (p.split(/[\\/]/).pop() ?? '') : '';
+  });
+
+  /** CodeMirror syntax mode for the edit session, derived from the file kind. */
+  protected readonly editorLanguage = computed<'markdown' | 'json' | 'http'>(() => {
+    const kind = this.state.selectedKind();
+    return kind === 'json' || kind === 'http' ? kind : 'markdown';
   });
 
   protected readonly modifiedAbsolute = computed<string>(() => {

@@ -69,6 +69,13 @@ const EN = {
   'email.date': 'Date',
   'email.attachments': 'Attachments',
 
+  // -- structured viewers --
+  'json.invalid': 'Invalid JSON — showing raw text.',
+  'json.tooLarge': 'File too large for the tree view — showing raw text.',
+  'http.variables': 'File variables',
+  'http.body': 'Body',
+  'http.noRequests': 'No requests found in this file.',
+
   // -- settings page --
   'settings.title': 'Settings',
   'settings.close': 'Close',
@@ -203,6 +210,12 @@ const DE: Record<TranslationKey, string> = {
   'email.subject': 'Betreff',
   'email.date': 'Datum',
   'email.attachments': 'Anhänge',
+
+  'json.invalid': 'Ungültiges JSON — Rohansicht.',
+  'json.tooLarge': 'Datei zu groß für die Baumansicht — Rohansicht.',
+  'http.variables': 'Datei-Variablen',
+  'http.body': 'Body',
+  'http.noRequests': 'Keine Requests in dieser Datei gefunden.',
 
   'settings.title': 'Einstellungen',
   'settings.close': 'Schließen',
