@@ -124,6 +124,19 @@ gh pr create --repo microsoft/winget-pkgs --fill
 Maintainers' automation validates and usually merges within a day or two.
 Subsequent versions go through `winget-releaser` automatically.
 
+### Troubleshooting: "Ref cannot be created / failed to create branch"
+
+The `winget.yml` run fails with this komac error when the fork
+`lootwitch/winget-pkgs` has drifted too far behind upstream (happened on
+v1.1.0 and v1.2.0). Fix: sync the fork, then re-run the workflow manually:
+
+```powershell
+gh repo sync lootwitch/winget-pkgs --branch master
+gh workflow run winget.yml --repo lootwitch/HopsMD -f tag=v1.2.0  # adjust tag
+```
+
+To avoid it entirely, sync the fork right before publishing the release.
+
 ---
 
 ## Recurring tasks
