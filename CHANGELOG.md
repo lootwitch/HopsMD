@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Structured viewers for `.json`, `.http`/`.rest`, and `.pdf`** — the recipe
+  tree now lists and opens JSON files (collapsible tree view; invalid files
+  fall back to highlighted raw text, very large ones to plain text), HTTP
+  request files (VS Code REST-Client format rendered as request cards with
+  method badge, headers, and body — display only, no execution), and PDFs
+  (embedded read-only viewer via the platform webview). JSON and HTTP files
+  are editable in-app with syntax-aware CodeMirror highlighting.
+
 ## [1.1.0] - 2026-06-09
 
 Phase 2 — read/edit mode, settings & theming, and multi-format viewing.

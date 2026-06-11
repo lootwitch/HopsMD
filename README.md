@@ -29,11 +29,15 @@ and to a properly poured pint of beer.
 - **Tree file operations** — right-click a node to create a new file or folder, rename
   (inline input), or delete (with confirmation). The tree refreshes automatically.
 - **More than Markdown** — the tree also lists and opens **plain-text** files
-  (`.txt` / `.text` / `.log`, shown verbatim and editable like Markdown), **emails**
-  (`.eml` / `.msg` — read-only header card + sanitised HTML or text body + attachment
-  names), and **common images** (`.png` / `.jpg` / `.gif` / `.svg` / `.webp` / `.bmp` /
-  `.avif` / `.ico`, fit-to-view with dimensions). HTML mail bodies are sanitised and the
-  app's CSP blocks all remote content, so nothing phones home.
+  (`.txt` / `.text` / `.log`, shown verbatim and editable like Markdown), **JSON**
+  (`.json` — collapsible tree view, editable with syntax highlighting), **HTTP request
+  files** (`.http` / `.rest` — VS Code REST-Client format shown as request cards with
+  method badge, headers, and body; editable, display only), **PDFs** (`.pdf` — embedded
+  read-only viewer), **emails** (`.eml` / `.msg` — read-only header card + sanitised
+  HTML or text body + attachment names), and **common images** (`.png` / `.jpg` /
+  `.gif` / `.svg` / `.webp` / `.bmp` / `.avif` / `.ico`, fit-to-view with dimensions).
+  HTML mail bodies are sanitised and the app's CSP blocks all remote content, so
+  nothing phones home.
 - **Theming & settings** — a Settings page (`#/settings`) with three colour presets
   (Brewpub Dark / Pilsner Light / High Contrast) plus per-token fine-tuning, body/mono
   fonts, text size, and DE/EN language — all persisted. A one-click theme switcher
