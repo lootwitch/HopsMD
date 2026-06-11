@@ -28,6 +28,9 @@ const TEXT_EXTENSIONS: &[&str] = &["txt", "text", "log"];
 const EMAIL_EXTENSIONS: &[&str] = &["eml", "msg"];
 const IMAGE_EXTENSIONS: &[&str] =
     &["png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "avif", "ico"];
+const JSON_EXTENSIONS: &[&str] = &["json"];
+const HTTP_EXTENSIONS: &[&str] = &["http", "rest"];
+const PDF_EXTENSIONS: &[&str] = &["pdf"];
 
 /// Coarse classification of a file by extension. Drives which read path and
 /// which frontend viewer a file gets. Mirrored in `core/file-kind.ts`.
@@ -37,6 +40,9 @@ pub enum FileKind {
     Text,
     Email,
     Image,
+    Json,
+    Http,
+    Pdf,
     Unsupported,
 }
 
@@ -51,6 +57,12 @@ pub(crate) fn kind_of(path: &Path) -> FileKind {
         FileKind::Email
     } else if any(IMAGE_EXTENSIONS) {
         FileKind::Image
+    } else if any(JSON_EXTENSIONS) {
+        FileKind::Json
+    } else if any(HTTP_EXTENSIONS) {
+        FileKind::Http
+    } else if any(PDF_EXTENSIONS) {
+        FileKind::Pdf
     } else {
         FileKind::Unsupported
     }
@@ -61,9 +73,13 @@ pub(crate) fn is_viewable(path: &Path) -> bool {
     kind_of(path) != FileKind::Unsupported
 }
 
-/// A file we read as UTF-8 text (markdown + plain text) — editable kinds.
+/// A file we read as UTF-8 text (markdown, plain text, json, http) — the
+/// editable kinds, accepted by `tap_recipe` and `save_recipe`.
 pub(crate) fn is_text_readable(path: &Path) -> bool {
-    matches!(kind_of(path), FileKind::Markdown | FileKind::Text)
+    matches!(
+        kind_of(path),
+        FileKind::Markdown | FileKind::Text | FileKind::Json | FileKind::Http
+    )
 }
 
 /// Folders we never descend into — pure noise inside a docs tree. Shared with
@@ -504,6 +520,11 @@ mod tests {
         assert_eq!(super::kind_of(Path::new("a.MSG")), Email);
         assert_eq!(super::kind_of(Path::new("a.png")), Image);
         assert_eq!(super::kind_of(Path::new("a.jpeg")), Image);
+        assert_eq!(super::kind_of(Path::new("a.json")), Json);
+        assert_eq!(super::kind_of(Path::new("a.JSON")), Json);
+        assert_eq!(super::kind_of(Path::new("a.http")), Http);
+        assert_eq!(super::kind_of(Path::new("a.rest")), Http);
+        assert_eq!(super::kind_of(Path::new("a.pdf")), Pdf);
         assert_eq!(super::kind_of(Path::new("a.exe")), Unsupported);
         assert_eq!(super::kind_of(Path::new("a")), Unsupported);
     }
@@ -514,15 +535,22 @@ mod tests {
         assert!(super::is_viewable(Path::new("a.txt")));
         assert!(super::is_viewable(Path::new("a.eml")));
         assert!(super::is_viewable(Path::new("a.webp")));
+        assert!(super::is_viewable(Path::new("a.json")));
+        assert!(super::is_viewable(Path::new("a.http")));
+        assert!(super::is_viewable(Path::new("a.pdf")));
         assert!(!super::is_viewable(Path::new("a.zip")));
     }
 
     #[test]
-    fn is_text_readable_is_markdown_and_text_only() {
+    fn is_text_readable_covers_editable_kinds() {
         assert!(super::is_text_readable(Path::new("a.md")));
         assert!(super::is_text_readable(Path::new("a.txt")));
+        assert!(super::is_text_readable(Path::new("a.json")));
+        assert!(super::is_text_readable(Path::new("a.http")));
+        assert!(super::is_text_readable(Path::new("a.rest")));
         assert!(!super::is_text_readable(Path::new("a.eml")));
         assert!(!super::is_text_readable(Path::new("a.png")));
+        assert!(!super::is_text_readable(Path::new("a.pdf")));
     }
 
     #[test]
