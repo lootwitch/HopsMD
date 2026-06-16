@@ -75,6 +75,7 @@ const EN = {
   'http.variables': 'File variables',
   'http.body': 'Body',
   'http.noRequests': 'No requests found in this file.',
+  'pdf.loadFailed': 'PDF could not be displayed.',
 
   // -- settings page --
   'settings.title': 'Settings',
@@ -216,6 +217,7 @@ const DE: Record<TranslationKey, string> = {
   'http.variables': 'Datei-Variablen',
   'http.body': 'Body',
   'http.noRequests': 'Keine Requests in dieser Datei gefunden.',
+  'pdf.loadFailed': 'PDF konnte nicht angezeigt werden.',
 
   'settings.title': 'Einstellungen',
   'settings.close': 'Schließen',
