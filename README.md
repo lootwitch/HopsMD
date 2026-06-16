@@ -51,7 +51,7 @@ and to a properly poured pint of beer.
 
 ## Install
 
-### winget — recommended
+### Windows — winget (recommended)
 
 ```powershell
 winget install CloudBrew.HopsMD
@@ -66,7 +66,7 @@ this is the install path we point everyone at.**
 > `microsoft/winget-pkgs` — until that PR is merged (typically a day or
 > two), use the manual download below.
 
-### Manual download
+### Windows — manual download
 
 For users who do not (yet) have winget, or who prefer downloading the
 installer directly: grab it from
@@ -82,11 +82,31 @@ installer directly: grab it from
 > code-signing programmes (e.g. SignPath OSS). Until then, the cleanest
 > way to dodge the warning entirely is `winget install`.
 
+### Linux
+
+Grab the `.deb` or AppImage from
+[the latest GitHub Release](https://github.com/lootwitch/HopsMD/releases/latest).
+
+**Debian / Ubuntu — `.deb` package:**
+
+```bash
+sudo apt install ./HopsMD_*_amd64.deb
+```
+
+**Portable AppImage (any distro):**
+
+```bash
+chmod +x HopsMD_*.AppImage
+./HopsMD_*.AppImage
+```
+
 ### Updates
 
 - Installed via winget? `winget upgrade CloudBrew.HopsMD`
-- Installed manually? The in-app updater (when active) shows a banner
-  "🍻 Neuer Sud — jetzt installieren" in the toolbar.
+- Installed manually (Windows)? The in-app updater (when active) shows a
+  banner "🍻 Neuer Sud — jetzt installieren" in the toolbar.
+- Linux: download the new release artefact and reinstall (`apt install`
+  on `.deb`; replace the AppImage file for the portable variant).
 
 ## Tech stack
 
@@ -100,7 +120,7 @@ installer directly: grab it from
 | Email       | [`mail-parser`](https://crates.io/crates/mail-parser) (`.eml`) + [`msg_parser`](https://crates.io/crates/msg_parser) (`.msg`) |
 | Sanitizer   | `DOMPurify` (output then re-trusted for Angular's `[innerHTML]`)|
 | Watcher     | [`notify-debouncer-full`](https://crates.io/crates/notify-debouncer-full) — one recursive watch per workspace, 250 ms debounce |
-| Installer   | NSIS + MSI (WiX 3) via `cargo tauri build`                       |
+| Installer   | NSIS + MSI (WiX 3) on Windows; `.deb` + AppImage on Linux        |
 | Updater     | `tauri-plugin-updater` + ed25519 signatures (feature-gated)      |
 
 ## Project layout
@@ -138,12 +158,29 @@ Standalone Angular dev (no shell, for fast UI iteration):
 npm start           # serves on http://localhost:3300
 ```
 
-Production build:
+Production build (Windows):
 
 ```bash
 npm run tauri:build
 # → src-tauri/target/release/bundle/nsis/HopsMD_<v>_x64-setup.exe
 # → src-tauri/target/release/bundle/msi/HopsMD_<v>_x64_en-US.msi
+```
+
+### Building from source on Linux
+
+Install the Tauri system libraries first:
+
+```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+```
+
+Then build the Linux bundles:
+
+```bash
+npm ci
+npm run tauri:build -- --bundles deb appimage
+# → src-tauri/target/release/bundle/deb/hops-md_<v>_amd64.deb
+# → src-tauri/target/release/bundle/appimage/HopsMD_<v>_amd64.AppImage
 ```
 
 ## Brewing glossary

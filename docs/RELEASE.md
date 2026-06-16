@@ -1,9 +1,9 @@
 # Release runbook
 
-Everything human-in-the-loop about shipping a HopsMD version on Windows.
-The repo ships unsigned, install-via-MSI/NSIS, distributed through GitHub
-Releases and Winget. In-app updates are wired up but feature-flagged off
-until an ed25519 keypair exists.
+Everything human-in-the-loop about shipping a HopsMD version.
+The repo ships unsigned installers for Windows (MSI/NSIS) and Linux (`.deb`/AppImage),
+distributed through GitHub Releases. Winget is the recommended Windows install path.
+In-app updates are wired up but feature-flagged off until an ed25519 keypair exists.
 
 ---
 
@@ -21,9 +21,13 @@ git tag v0.2.0
 git push origin main --tags
 ```
 
-That fires `.github/workflows/release.yml` → builds MSI + NSIS → creates a
-**draft** GitHub Release with both attached. Review the draft, hit
-"Publish release", and:
+That fires `.github/workflows/release.yml`, which runs two parallel build jobs:
+
+- **`build-windows`** — builds MSI + NSIS on `windows-latest`.
+- **`build-linux`** — builds `.deb` + AppImage on `ubuntu-latest`.
+
+All four artefacts are attached to a **draft** GitHub Release. Review the draft,
+hit "Publish release", and:
 
 - `winget.yml` triggers → opens a PR against `microsoft/winget-pkgs` with
   the new version. Usually merged within a day.
@@ -154,6 +158,8 @@ sed -i 's/^version = "0\.1\.0"/version = "0.2.0"/' src-tauri/Cargo.toml
 
 ### Producing installers locally for testing
 
+**Windows:**
+
 ```bash
 npm run tauri:build
 # → src-tauri/target/release/bundle/nsis/HopsMD_<v>_x64-setup.exe
@@ -162,6 +168,16 @@ npm run tauri:build
 
 First build downloads WiX 3 + NSIS to the user-local Tauri cache (one-time,
 ~50 MB). Subsequent builds are warm.
+
+**Linux:**
+
+Requires the Tauri system libraries (see README "Building from source on Linux").
+
+```bash
+npm ci
+npm run tauri:build -- --bundles deb appimage
+# Artefacts under src-tauri/target/release/bundle/{deb,appimage}/
+```
 
 ### Testing the local manifest against winget
 
@@ -227,7 +243,8 @@ independent of the code-signing cert).
 ```
                        ┌──────────────────────────────────────┐
 git push tag v0.2.0 ──►│ .github/workflows/release.yml        │
-                       │  • tauri-action builds MSI + NSIS    │
+                       │  • build-windows: MSI + NSIS         │
+                       │  • build-linux:   .deb + AppImage    │
                        │  • signs update artefacts (ed25519)  │
                        │  • drafts GitHub Release             │
                        └────────────────┬─────────────────────┘
@@ -237,6 +254,8 @@ git push tag v0.2.0 ──►│ .github/workflows/release.yml        │
                        │ GitHub Release v0.2.0                │
                        │  • HopsMD_0.2.0_x64-setup.exe (NSIS) │
                        │  • HopsMD_0.2.0_x64_en-US.msi  (MSI) │
+                       │  • HopsMD_0.2.0_amd64.deb      (deb) │
+                       │  • HopsMD_0.2.0_amd64.AppImage       │
                        │  • latest.json + signatures          │
                        └─────────┬───────────────┬────────────┘
                                  │               │
