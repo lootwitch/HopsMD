@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Ctrl+F** (find) and **Ctrl+H** (replace). Supports case-insensitive,
   regex, and whole-word matching, plus Replace / Replace All. The panel is
   themed to match the brewpub palette (no more white-box on dark background).
+- **Markdown-Tastenkürzel im Editor** — **Ctrl+B** wraps the selection in
+  `**…**` (toggle bold), **Ctrl+I** in `*…*` (toggle italic), **Ctrl+K**
+  inserts `[selection](url)` with `url` pre-selected for replacement.
+  Pressing Enter inside a `- ` / `1. ` list continues the list automatically
+  (via the `@codemirror/lang-markdown` default keymap).
 
 ## [1.3.0] - 2026-06-16
 

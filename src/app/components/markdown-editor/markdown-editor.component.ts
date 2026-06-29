@@ -47,7 +47,7 @@ export class MarkdownEditorComponent {
     afterNextRender(async () => {
       const [
         { EditorView, keymap, lineNumbers },
-        { EditorState },
+        { EditorState, EditorSelection },
         { markdown },
         { languages },
         { defaultKeymap, history, historyKeymap, indentWithTab },
@@ -62,6 +62,75 @@ export class MarkdownEditorComponent {
         import('@codemirror/language'),
         import('@codemirror/search'),
       ]);
+
+      type Cmd = (view: import('@codemirror/view').EditorView) => boolean;
+      const isMarkdown = this.language() === 'markdown';
+
+      const toggleWrap = (mark: string): Cmd => (view) => {
+        const { state } = view;
+        const changes = state.changeByRange((range) => {
+          const inner = state.doc.sliceString(range.from, range.to);
+          const before = state.doc.sliceString(Math.max(0, range.from - mark.length), range.from);
+          const after = state.doc.sliceString(range.to, Math.min(state.doc.length, range.to + mark.length));
+          if (before === mark && after === mark) {
+            return {
+              changes: [
+                { from: range.from - mark.length, to: range.from, insert: '' },
+                { from: range.to, to: range.to + mark.length, insert: '' },
+              ],
+              range: EditorSelection.range(range.from - mark.length, range.to - mark.length),
+            };
+          }
+          if (
+            inner.length >= 2 * mark.length &&
+            inner.startsWith(mark) &&
+            inner.endsWith(mark)
+          ) {
+            return {
+              changes: { from: range.from, to: range.to, insert: inner.slice(mark.length, -mark.length) },
+              range: EditorSelection.range(range.from, range.to - 2 * mark.length),
+            };
+          }
+          if (range.empty) {
+            return {
+              changes: { from: range.from, insert: mark + mark },
+              range: EditorSelection.cursor(range.from + mark.length),
+            };
+          }
+          return {
+            changes: [
+              { from: range.from, insert: mark },
+              { from: range.to, insert: mark },
+            ],
+            range: EditorSelection.range(range.from + mark.length, range.to + mark.length),
+          };
+        });
+        view.dispatch(state.update(changes, { scrollIntoView: true, userEvent: 'input.toggleMark' }));
+        return true;
+      };
+
+      const insertLink: Cmd = (view) => {
+        const { state } = view;
+        const changes = state.changeByRange((range) => {
+          const text = range.empty ? 'text' : state.doc.sliceString(range.from, range.to);
+          const insert = `[${text}](url)`;
+          const urlFrom = range.from + 1 + text.length + 2;
+          return {
+            changes: { from: range.from, to: range.to, insert },
+            range: EditorSelection.range(urlFrom, urlFrom + 3),
+          };
+        });
+        view.dispatch(state.update(changes, { scrollIntoView: true, userEvent: 'input.link' }));
+        return true;
+      };
+
+      const markdownShortcuts = isMarkdown
+        ? [
+            { key: 'Mod-b', run: toggleWrap('**'), preventDefault: true },
+            { key: 'Mod-i', run: toggleWrap('*'), preventDefault: true },
+            { key: 'Mod-k', run: insertLink, preventDefault: true },
+          ]
+        : [];
 
       const theme = EditorView.theme(
         {
@@ -160,7 +229,7 @@ export class MarkdownEditorComponent {
           history(),
           search({ top: true }),
           highlightSelectionMatches(),
-          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+          keymap.of([...markdownShortcuts, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
           langExtension,
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           EditorView.lineWrapping,
