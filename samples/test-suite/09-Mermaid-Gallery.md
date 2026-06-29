@@ -20,7 +20,7 @@ flowchart LR
     F --> H[Kühlen]
     G --> H
     H --> I[Gären]
-    I --> J[Abfüllen]
+    I --> J[Bier Abfüllen]
 ```
 
 ## Sequenzdiagramm
