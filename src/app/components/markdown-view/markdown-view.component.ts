@@ -181,6 +181,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
                 <hops-toc
                   [items]="toc()"
                   [collapsed]="tocCollapsed()"
+                  [activeId]="activeHeadingId()"
                   (itemSelected)="scrollToHeading($event)"
                   (collapseToggled)="onTocToggle()"
                 />
@@ -412,6 +413,13 @@ export class MarkdownViewComponent {
   /** Table of contents extracted from the post-render article DOM. */
   protected readonly toc = signal<readonly TocItem[]>([]);
 
+  /** ID of the heading currently considered "in view" — drives the TOC's
+   *  active-item highlight. Empty string when no heading is active yet. */
+  protected readonly activeHeadingId = signal<string>('');
+
+  /** Detach the previous outline-sync scroll listener (set up per render). */
+  private outlineSyncCleanup: (() => void) | null = null;
+
   /** TOC collapse state, persisted across reloads. */
   protected readonly tocCollapsed = signal<boolean>(
     typeof localStorage !== 'undefined' && localStorage.getItem(TOC_COLLAPSE_KEY) === '1',
@@ -498,8 +506,14 @@ export class MarkdownViewComponent {
     // fires *after* Angular has applied the binding, so the article is
     // populated when this runs.
     afterRenderEffect(() => {
+      // Always tear down the previous outline-sync listener before the new
+      // article's headings replace the old ones.
+      this.outlineSyncCleanup?.();
+      this.outlineSyncCleanup = null;
+
       if (!this.html()) {
         this.toc.set([]);
+        this.activeHeadingId.set('');
         return;
       }
       const host = this.host()?.nativeElement ?? null;
@@ -513,6 +527,7 @@ export class MarkdownViewComponent {
           this.pendingAnchor = null;
           this.scrollToHeading(anchor);
         }
+        this.outlineSyncCleanup = this.attachOutlineSync(host);
       }
     });
 
@@ -524,7 +539,51 @@ export class MarkdownViewComponent {
     inject(DestroyRef).onDestroy(() => {
       clearInterval(tickId);
       if (this.pathCopiedTimer) clearTimeout(this.pathCopiedTimer);
+      this.outlineSyncCleanup?.();
     });
+  }
+
+  /**
+   * Wire a scroll listener on the article's scroll container so the TOC can
+   * highlight the heading currently nearest the top of the viewport. Returns
+   * a cleanup function that detaches the listener and cancels any pending rAF.
+   */
+  private attachOutlineSync(host: HTMLElement): () => void {
+    const scrollEl = host.closest<HTMLElement>('.view-grid');
+    if (!scrollEl) return () => undefined;
+    const headings = Array.from(
+      host.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'),
+    ).filter((h) => h.id);
+    if (headings.length === 0) {
+      this.activeHeadingId.set('');
+      return () => undefined;
+    }
+    const TRIGGER_OFFSET = 90; // px below the container top
+    let rafId: number | null = null;
+    const update = (): void => {
+      rafId = null;
+      const containerTop = scrollEl.getBoundingClientRect().top;
+      let active = headings[0].id;
+      for (const h of headings) {
+        const top = h.getBoundingClientRect().top - containerTop;
+        if (top - TRIGGER_OFFSET <= 0) {
+          active = h.id;
+        } else {
+          break;
+        }
+      }
+      this.activeHeadingId.set(active);
+    };
+    const onScroll = (): void => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(update);
+    };
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => {
+      scrollEl.removeEventListener('scroll', onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }
 
   /**

@@ -51,6 +51,7 @@ import { I18nService } from '../../services/i18n.service';
               <li
                 class="toc-entry"
                 [attr.data-level]="item.level"
+                [class.active]="item.id === activeId()"
                 [style.padding-left.px]="8 + item.indent * 14"
               >
                 <button
@@ -167,6 +168,12 @@ import { I18nService } from '../../services/i18n.service';
         background: rgba(245, 197, 66, 0.08);
         border-left-color: var(--hops-pilsner);
       }
+      .toc-entry.active .toc-link {
+        color: var(--hops-foam);
+        background: rgba(245, 197, 66, 0.14);
+        border-left-color: var(--hops-pilsner);
+        font-weight: 600;
+      }
       .toc-entry[data-level="1"] .toc-link {
         font-weight: 600;
         color: var(--hops-foam);
@@ -188,6 +195,9 @@ export class TocComponent {
 
   readonly items = input.required<readonly TocItem[]>();
   readonly collapsed = input<boolean>(false);
+  /** Id of the heading currently considered "in view" — highlighted in the
+   *  list. Empty string means nothing is highlighted. */
+  readonly activeId = input<string>('');
 
   readonly itemSelected = output<string>();
   readonly collapseToggled = output<void>();

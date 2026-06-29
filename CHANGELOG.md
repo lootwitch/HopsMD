@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   article are now interactive: clicking `- [ ]` flips it to `- [x]` (and back)
   in the underlying file. In view mode the change is saved straight to disk;
   in edit mode it updates the edit buffer.
+- **Outline-Sync** — the TOC now highlights the heading whose section is
+  currently in view. As the article scrolls, the matching TOC item gets the
+  pilsner-amber accent so you always see "where you are" at a glance.
 
 ## [1.3.0] - 2026-06-16
 
