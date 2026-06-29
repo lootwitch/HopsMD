@@ -40,6 +40,25 @@ Und der Ordnerbaum tiefer:
 
 ---
 
+## 🆕 Neue Features (Editor & Viewer)
+
+Diese Seiten testen die Features aus der jüngsten Iteration. Jede hat eine
+eigene Checkliste — bitte durchklicken:
+
+13. [[12-Sidebar-Resize|⑫ Sidebar resizable]] — Drag-Handle, Persistenz, Reset per Doppelklick
+14. [[13-Editor-Search-Replace|⑬ Suchen & Ersetzen im Editor]] — Ctrl+F / Ctrl+H + Themed-Panel
+15. [[14-Editor-Shortcuts|⑭ Markdown-Tastenkürzel]] — Ctrl+B/I/K, Listen-Continuation
+16. [[15-Image-Paste|⑮ Bild per Paste/Drop]] — landet in `assets/`, fügt Link ein
+17. [[16-Task-Checkboxes|⑯ Klickbare Task-Checkboxes]] — togglen im Source
+18. [[17-Outline-Sync|⑰ Outline-Sync]] — TOC verfolgt Scroll-Position
+19. [[18-Find-in-Files|⑱ Find in Files]] — Ctrl+Shift+F volltext-Suche
+20. [[19-Frontmatter-Editor|⑲ Frontmatter-Editor]] — YAML als Formular
+21. [[20-Spellcheck|⑳ Spellcheck-Toggle]] — Browser-/OS-Wörterbücher
+22. [[21-Auto-Save|㉑ Auto-Save + Dirty-Indikator]] — debounced background save
+23. [[22-Print-PDF|㉒ Print / Save-as-PDF]] — Ctrl+P mit Print-Stylesheet
+
+---
+
 ## 🖱️ Interaktive Features — manuelle Checkliste
 
 Diese kann man nicht in einer Datei „rendern" — bitte aktiv durchprobieren:
