@@ -1,4 +1,5 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { EditorPrefsService } from './editor-prefs.service';
 import {
   createFolderBridge,
   createRecipeBridge,
@@ -76,6 +77,13 @@ function toggleNthTaskLine(source: string, index: number): string | null {
  */
 @Injectable({ providedIn: 'root' })
 export class MarkdownStructureService {
+  private readonly prefs = inject(EditorPrefsService);
+  /** Tick this signal whenever a save lands. Read by the auto-save effect so
+   *  the post-save reset of `dirty` doesn't immediately reschedule a save. */
+  private readonly _lastSavedAt = signal<number>(0);
+  readonly lastSavedAt = this._lastSavedAt.asReadonly();
+  private autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
   // --- state ---
   private readonly _brewhouse = signal<string | null>(null);
   private readonly _tree = signal<RecipeNode | null>(null);
@@ -114,13 +122,40 @@ export class MarkdownStructureService {
   readonly isOpen = computed(() => this._tree() !== null);
 
   constructor() {
+    // Debounced auto-save loop. Reschedules whenever the edit buffer changes
+    // (the `dirty` computed reacts to that) or the auto-save preferences
+    // change. A pending timer is always cleared first so the most recent
+    // keystroke wins.
+    effect(() => {
+      const dirty = this.dirty();
+      const enabled = this.prefs.autoSave();
+      const delay = this.prefs.autoSaveDelayMs();
+      if (this.autoSaveTimer !== null) {
+        clearTimeout(this.autoSaveTimer);
+        this.autoSaveTimer = null;
+      }
+      if (!dirty || !enabled) return;
+      this.autoSaveTimer = setTimeout(() => {
+        this.autoSaveTimer = null;
+        // Browser-only mode has no Tauri bridge to save through; the
+        // user wouldn't see a useful error from auto-save, so skip silently.
+        if (!isTauri()) return;
+        if (this.dirty() && this.prefs.autoSave() && this._mode() === 'editing') {
+          void this.saveRecipe({ keepEditing: true });
+        }
+      }, delay);
+    });
+
     if (isTauri()) {
       const unlisteners: Array<() => void> = [];
       void listenBridge<string>(EVENT_RECIPE_CHANGED, (path) => this.onRecipeChanged(path))
         .then((fn) => unlisteners.push(fn));
       void listenBridge<unknown>(EVENT_BREWHOUSE_CHANGED, () => void this.rescanTree())
         .then((fn) => unlisteners.push(fn));
-      inject(DestroyRef).onDestroy(() => unlisteners.forEach((fn) => fn()));
+      inject(DestroyRef).onDestroy(() => {
+        unlisteners.forEach((fn) => fn());
+        if (this.autoSaveTimer !== null) clearTimeout(this.autoSaveTimer);
+      });
 
       // Auto-open the brewhouse that was active last time we ran. This is
       // decoupled from the favourites list — favourites are a manual
@@ -200,7 +235,7 @@ export class MarkdownStructureService {
   }
 
   /** Write the buffer to disk and return to viewing. */
-  async saveRecipe(): Promise<void> {
+  async saveRecipe(options: { keepEditing?: boolean } = {}): Promise<void> {
     const path = this._selectedPath();
     if (!path || this._mode() !== 'editing') return;
     const content = this._editBuffer();
@@ -212,9 +247,12 @@ export class MarkdownStructureService {
       // the resulting recipe:changed and `dirty` clears.
       this._selectedContent.set(content);
       this._lastModified.set(Date.now());
+      this._lastSavedAt.set(Date.now());
       this._externalConflict.set(false);
-      this._mode.set('viewing');
-      this._editBuffer.set('');
+      if (!options.keepEditing) {
+        this._mode.set('viewing');
+        this._editBuffer.set('');
+      }
     } catch (err) {
       this._error.set(this.describe(err));
     } finally {

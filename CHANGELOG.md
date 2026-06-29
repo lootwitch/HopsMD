@@ -51,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   edit pane. Off by default; toggle it under Settings → Editor. Uses the
   browser/OS-installed dictionaries, so it picks up whatever languages the
   user has configured.
+- **Auto-Save** — optional debounced background save while editing. Settings
+  → Editor toggles it on/off and lets you pick the debounce (300 ms–10 s).
+  The filebar shows "auto-save pending…" while waiting and "saved at HH:MM"
+  briefly after a save lands. Auto-save keeps you in edit mode (the explicit
+  *Save* button still ejects to view mode, as before).
+- **Pulsing dirty indicator** — the `•` next to the file path now pulses
+  while there are unsaved changes, so it's hard to miss.
 
 ## [1.3.0] - 2026-06-16
 

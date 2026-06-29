@@ -61,6 +61,9 @@ const EN = {
   'edit.conflictMessage': 'This file changed on disk.',
   'edit.conflictReload': 'Reload (discard my edits)',
   'edit.conflictKeep': 'Keep my edits',
+  'edit.autoSavePending': 'auto-save pending…',
+  'edit.autoSavedAt': 'saved at {time}',
+  'edit.autoSaveTooltip': 'Auto-save active (debounce: {ms} ms)',
 
   // -- email view --
   'email.from': 'From',
@@ -233,6 +236,9 @@ const DE: Record<TranslationKey, string> = {
   'edit.conflictMessage': 'Diese Datei wurde auf der Platte geändert.',
   'edit.conflictReload': 'Neu laden (meine Änderungen verwerfen)',
   'edit.conflictKeep': 'Meine Änderungen behalten',
+  'edit.autoSavePending': 'auto-save bereit…',
+  'edit.autoSavedAt': 'gespeichert um {time}',
+  'edit.autoSaveTooltip': 'Auto-Save aktiv (Pause: {ms} ms)',
 
   'email.from': 'Von',
   'email.to': 'An',

@@ -16,6 +16,7 @@ import { dirname, resolveRelative } from '../../core/path-utils';
 import { openPathBridge, openUrlBridge } from '../../core/tauri-bridge';
 import type { TocItem } from '../../models/toc-item.model';
 import { I18nService } from '../../services/i18n.service';
+import { EditorPrefsService } from '../../services/editor-prefs.service';
 import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
@@ -92,7 +93,14 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
           </span>
         }
         <span class="filebar-actions">
-          @if (state.dirty()) { <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span> }
+          @if (autoSaveStatus(); as status) {
+            <span class="autosave" [class.autosave-saved]="status.kind === 'saved'" [title]="status.tooltip">
+              {{ status.label }}
+            </span>
+          }
+          @if (state.dirty()) {
+            <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span>
+          }
           @if (state.mode() === 'viewing' && state.selectedPath() && state.editable()) {
             <button type="button" class="fbtn" (click)="enterEdit()" [title]="i18n.t('edit.enter')">✎</button>
           } @else if (state.mode() === 'editing') {
@@ -329,6 +337,20 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         font-size: 1.1rem;
         line-height: 1;
         font-weight: 700;
+        animation: hops-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes hops-pulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.45; }
+      }
+      .autosave {
+        font-size: 0.72rem;
+        color: var(--hops-text-dim);
+        font-style: italic;
+        padding: 0 0.35rem;
+      }
+      .autosave-saved {
+        color: var(--hops-leaf);
       }
       .fbtn {
         appearance: none;
@@ -400,6 +422,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
 export class MarkdownViewComponent {
   protected readonly state = inject(MarkdownStructureService);
   protected readonly i18n = inject(I18nService);
+  protected readonly editorPrefs = inject(EditorPrefsService);
   private readonly parser = inject(MarkdownParserService);
   private readonly mermaid = inject(MermaidRenderService);
   private readonly fullscreen = inject(MermaidFullscreenService);
@@ -464,6 +487,35 @@ export class MarkdownViewComponent {
     return mtime === null
       ? ''
       : new Date(mtime).toLocaleString(this.i18n.intlLocale());
+  });
+
+  /** Inline filebar label about the auto-save state — null when there's
+   *  nothing useful to say (no edit session, no preference enabled, etc.). */
+  protected readonly autoSaveStatus = computed<
+    { kind: 'pending' | 'saved'; label: string; tooltip: string } | null
+  >(() => {
+    if (this.state.mode() !== 'editing') return null;
+    if (!this.editorPrefs.autoSave()) return null;
+    if (this.state.dirty()) {
+      return {
+        kind: 'pending',
+        label: this.i18n.t('edit.autoSavePending'),
+        tooltip: this.i18n.t('edit.autoSaveTooltip', {
+          ms: this.editorPrefs.autoSaveDelayMs(),
+        }),
+      };
+    }
+    const saved = this.state.lastSavedAt();
+    if (saved === 0) return null;
+    return {
+      kind: 'saved',
+      label: this.i18n.t('edit.autoSavedAt', {
+        time: new Date(saved).toLocaleTimeString(this.i18n.intlLocale()),
+      }),
+      tooltip: this.i18n.t('edit.autoSaveTooltip', {
+        ms: this.editorPrefs.autoSaveDelayMs(),
+      }),
+    };
   });
 
   private formatRelative(mtime: number, now: number): string {
