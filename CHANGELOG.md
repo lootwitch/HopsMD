@@ -63,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no sidebar, no TOC, no banners — just the rendered article with print-safe
   colours, page-break-aware code blocks and figures. The dialog's "Save as
   PDF" option works out of the box.
+- **Per-Code-Block Split-Editor** — the ✎ icon in a code block's toolbar now
+  opens a focused modal: CodeMirror on the left (with the block's language
+  auto-loaded via `@codemirror/language-data`), a live preview on the right
+  (Mermaid for mermaid blocks, highlight.js for everything else). Ctrl+S
+  saves just that block back into the file; Esc / Cancel discards with a
+  confirm prompt if dirty. The rest of the document stays in view mode.
 
 ## [1.3.0] - 2026-06-16
 

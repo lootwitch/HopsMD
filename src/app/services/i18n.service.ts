@@ -66,6 +66,17 @@ const EN = {
   'edit.autoSaveTooltip': 'Auto-save active (debounce: {ms} ms)',
   'print.tooltip': 'Print or save as PDF (Ctrl+P)',
 
+  // -- code-block split editor --
+  'codeEdit.title': 'Edit code block',
+  'codeEdit.preview': 'Live preview',
+  'codeEdit.save': 'Save block',
+  'codeEdit.cancel': 'Cancel',
+  'codeEdit.dirty': 'Unsaved changes',
+  'codeEdit.discardConfirm': 'Discard changes to this code block?',
+  'codeEdit.mermaidFailed': 'Mermaid could not render this source.',
+  'codeEdit.outOfSync':
+    'Could not locate the matching code block in the source. Reload the file and try again.',
+
   // -- email view --
   'email.from': 'From',
   'email.to': 'To',
@@ -241,6 +252,16 @@ const DE: Record<TranslationKey, string> = {
   'edit.autoSavedAt': 'gespeichert um {time}',
   'edit.autoSaveTooltip': 'Auto-Save aktiv (Pause: {ms} ms)',
   'print.tooltip': 'Drucken oder als PDF speichern (Strg+P)',
+
+  'codeEdit.title': 'Code-Block bearbeiten',
+  'codeEdit.preview': 'Live-Vorschau',
+  'codeEdit.save': 'Block speichern',
+  'codeEdit.cancel': 'Abbrechen',
+  'codeEdit.dirty': 'Ungespeicherte Änderungen',
+  'codeEdit.discardConfirm': 'Änderungen an diesem Code-Block verwerfen?',
+  'codeEdit.mermaidFailed': 'Mermaid konnte den Quelltext nicht rendern.',
+  'codeEdit.outOfSync':
+    'Der passende Code-Block wurde im Quelltext nicht gefunden. Bitte die Datei neu laden und erneut versuchen.',
 
   'email.from': 'Von',
   'email.to': 'An',

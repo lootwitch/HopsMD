@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { dirname, resolveRelative } from '../../core/path-utils';
+import { listFencedBlocks, replaceNthFencedBlock } from '../../core/fence-utils';
 import { openPathBridge, openUrlBridge } from '../../core/tauri-bridge';
 import type { TocItem } from '../../models/toc-item.model';
 import { I18nService } from '../../services/i18n.service';
@@ -21,6 +22,7 @@ import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
+import { CodeBlockEditorComponent } from '../code-block-editor/code-block-editor.component';
 import { FrontmatterEditorComponent } from '../frontmatter-editor/frontmatter-editor.component';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { TocComponent } from '../toc/toc.component';
@@ -57,6 +59,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
     TocComponent,
     FrontmatterEditorComponent,
     MarkdownEditorComponent,
+    CodeBlockEditorComponent,
     EmailViewComponent,
     ImageViewComponent,
     JsonViewComponent,
@@ -134,6 +137,15 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         <p [innerHTML]="i18n.t('view.welcomeBody')"></p>
         <p class="hint">{{ i18n.t('view.welcomeHint') }}</p>
       </div>
+    }
+
+    @if (codeBlockEdit(); as block) {
+      <hops-code-block-editor
+        [initialSource]="block.source"
+        [language]="block.language"
+        (save)="onCodeBlockSave($event)"
+        (cancel)="onCodeBlockCancel()"
+      />
     }
 
     @if (state.mode() === 'editing') {
@@ -452,6 +464,12 @@ export class MarkdownViewComponent {
   /** ID of the heading currently considered "in view" — drives the TOC's
    *  active-item highlight. Empty string when no heading is active yet. */
   protected readonly activeHeadingId = signal<string>('');
+
+  /** When non-null, the split-view code-block editor is open for the Nth
+   *  fenced block (document order) in the currently selected file. */
+  protected readonly codeBlockEdit = signal<
+    { index: number; source: string; language: string } | null
+  >(null);
 
   /** Detach the previous outline-sync scroll listener (set up per render). */
   private outlineSyncCleanup: (() => void) | null = null;
@@ -778,7 +796,7 @@ export class MarkdownViewComponent {
         this.toggleView(block);
         break;
       case 'open-editor':
-        void this.openInEditor();
+        this.openBlockEditor(block);
         break;
       case 'fullscreen':
         this.openFullscreen(block);
@@ -964,15 +982,55 @@ export class MarkdownViewComponent {
   }
 
   /**
-   * The code-block toolbar's pencil now enters the in-app CodeMirror editor
-   * rather than launching the OS-default editor — CodeMirror is the editor.
+   * Open the per-block split-view editor for one fenced code block.
+   * Counts the block's document position among rendered code blocks so we
+   * can rewrite the matching fence later. We deliberately don't bind by id —
+   * the rendered DOM ids are random per parse, while the source position is
+   * stable across renders.
    */
-  private openInEditor(): void {
+  private openBlockEditor(block: HTMLElement): void {
     if (!this.state.selectedPath()) {
       this.state.showError(this.i18n.t('error.noDocOpen'));
       return;
     }
-    this.state.enterEditing();
+    const host = this.host()?.nativeElement;
+    if (!host) return;
+    const all = Array.from(host.querySelectorAll('.hops-code-block'));
+    const index = all.indexOf(block);
+    if (index < 0) return;
+    // Cross-check against the parsed source — bail (with a friendly hint) if
+    // the rendered DOM and the source are out of sync for any reason.
+    const fenced = listFencedBlocks(this.state.selectedContent());
+    if (index >= fenced.length) {
+      this.state.showError(this.i18n.t('codeEdit.outOfSync'));
+      return;
+    }
+    const meta = fenced[index];
+    // Prefer the live source from the file (in case `data-source` was stripped
+    // by sanitization or got out of date), language from the info string.
+    const lang = (meta.infoString.trim().split(/\s+/)[0] ?? '').toLowerCase();
+    this.codeBlockEdit.set({ index, source: meta.source, language: lang });
+  }
+
+  protected async onCodeBlockSave(newSource: string): Promise<void> {
+    const current = this.codeBlockEdit();
+    if (!current) return;
+    const updated = replaceNthFencedBlock(
+      this.state.selectedContent(),
+      current.index,
+      newSource,
+    );
+    if (updated === null) {
+      this.state.showError(this.i18n.t('codeEdit.outOfSync'));
+      this.codeBlockEdit.set(null);
+      return;
+    }
+    await this.state.saveContent(updated);
+    this.codeBlockEdit.set(null);
+  }
+
+  protected onCodeBlockCancel(): void {
+    this.codeBlockEdit.set(null);
   }
 }
 

@@ -54,16 +54,16 @@ def brewing(grain, hop, water):
 - [ ] **Ctrl+P** im Edit-Modus → **nichts** passiert (Shortcut ist View-only)
 
 ### Print-Preview-Inhalt
-- [ ] **Keine Toolbar** (kein Logo, kein Sudhaus-Picker)
-- [ ] **Keine Sidebar** (kein Rezeptbuch, kein Sudhaus)
-- [ ] **Keine TOC** rechts
+- [x] **Keine Toolbar** (kein Logo, kein Sudhaus-Picker)
+- [x] **Keine Sidebar** (kein Rezeptbuch, kein Sudhaus)
+- [x] **Keine TOC** rechts
 - [ ] **Kein Filebar** (kein Pfad, keine Buttons)
 - [ ] **Kein Metadaten-Panel**
 - [ ] **Kein Find-in-Files**-Overlay
 - [ ] **Code-Block-Toolbars** sind unsichtbar
-- [ ] Schwarzer Text auf weißem Hintergrund
-- [ ] Code-Blöcke: schwarzer Text, grauer Background, mit Border
-- [ ] Links: schwarz + unterstrichen
+- [x] Schwarzer Text auf weißem Hintergrund
+- [x] Code-Blöcke: schwarzer Text, grauer Background, mit Border
+- [x] Links: schwarz + unterstrichen
 - [ ] Überschriften bleiben mit ihrer ersten Content-Zeile zusammen (kein Page-Break direkt darunter)
 
 ### Export
