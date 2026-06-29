@@ -60,6 +60,60 @@ body.hops-resizing-sidebar * {
   user-select: none !important;
 }
 
+/* Print stylesheet — strip the brewpub chrome and let the rendered article
+   take the whole page. Used by Ctrl+P (window.print()) for both paper and
+   "Save as PDF" via the OS print dialog. */
+@media print {
+  /* Reset the global "shell is fixed" overflow:hidden so print can paginate. */
+  html, body { height: auto !important; overflow: visible !important; background: white !important; color: black !important; }
+
+  /* Hide the app chrome: toolbar, sidebar, filebar, TOC, banners, code-block
+     toolbar buttons, mermaid fullscreen, find-in-files overlay. */
+  hops-brewery-toolbar,
+  hops-favorites-panel,
+  hops-file-tree,
+  .sidebar,
+  .sidebar-header,
+  .sidebar-body,
+  .sidebar-version,
+  .filebar,
+  .toc-pane,
+  .banner,
+  .hops-code-toolbar,
+  hops-mermaid-fullscreen,
+  hops-find-in-files,
+  hops-context-menu,
+  hops-frontmatter-editor {
+    display: none !important;
+  }
+
+  /* Let the article take the full page width with reasonable margins. */
+  .layout {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+  .view-grid { display: block !important; overflow: visible !important; }
+  .content { display: block !important; }
+  .hops-markdown {
+    max-width: none !important;
+    padding: 0 !important;
+    color: black !important;
+    background: white !important;
+  }
+  /* Code blocks: keep the source visible, ditch the brewpub background. */
+  .hops-code-block {
+    background: #f5f5f5 !important;
+    border: 1px solid #ccc !important;
+    color: black !important;
+    page-break-inside: avoid;
+  }
+  .hops-code-source code, .hops-code-source pre { color: black !important; background: transparent !important; }
+  a { color: black !important; text-decoration: underline; }
+  h1, h2, h3, h4, h5, h6 { color: black !important; page-break-after: avoid; }
+  img, svg { max-width: 100% !important; height: auto !important; page-break-inside: avoid; }
+  table { page-break-inside: avoid; }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

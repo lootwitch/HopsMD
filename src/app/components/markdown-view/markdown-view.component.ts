@@ -101,6 +101,14 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
           @if (state.dirty()) {
             <span class="dirty" [title]="i18n.t('edit.dirtyTooltip')">•</span>
           }
+          @if (state.mode() === 'viewing' && state.selectedKind() === 'markdown') {
+            <button
+              type="button"
+              class="fbtn"
+              (click)="print()"
+              [title]="i18n.t('print.tooltip')"
+            >⎙</button>
+          }
           @if (state.mode() === 'viewing' && state.selectedPath() && state.editable()) {
             <button type="button" class="fbtn" (click)="enterEdit()" [title]="i18n.t('edit.enter')">✎</button>
           } @else if (state.mode() === 'editing') {
@@ -680,6 +688,13 @@ export class MarkdownViewComponent {
     this.state.keepMyEdits();
   }
 
+  /** Open the browser/OS print dialog with the rendered article — the
+   *  @media print stylesheet in styles.scss strips chrome so only the
+   *  article renders. "Save as PDF" lives inside the same dialog. */
+  protected print(): void {
+    window.print();
+  }
+
   @HostListener('document:keydown', ['$event'])
   protected onKey(e: KeyboardEvent): void {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
@@ -690,6 +705,17 @@ export class MarkdownViewComponent {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
       e.preventDefault();
       if (this.state.mode() === 'viewing' && this.state.selectedPath()) this.state.enterEditing();
+      return;
+    }
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      !e.shiftKey &&
+      e.key.toLowerCase() === 'p' &&
+      this.state.mode() === 'viewing' &&
+      this.state.selectedKind() === 'markdown'
+    ) {
+      e.preventDefault();
+      this.print();
       return;
     }
     if (e.key === 'Escape' && this.state.mode() === 'editing') {

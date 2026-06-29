@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   *Save* button still ejects to view mode, as before).
 - **Pulsing dirty indicator** — the `•` next to the file path now pulses
   while there are unsaved changes, so it's hard to miss.
+- **Print / Save as PDF** — **Ctrl+P** (or the new ⎙ button in the filebar)
+  opens the browser/OS print dialog with a stripped-down view: no toolbar,
+  no sidebar, no TOC, no banners — just the rendered article with print-safe
+  colours, page-break-aware code blocks and figures. The dialog's "Save as
+  PDF" option works out of the box.
 
 ## [1.3.0] - 2026-06-16
 

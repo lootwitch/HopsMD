@@ -64,6 +64,7 @@ const EN = {
   'edit.autoSavePending': 'auto-save pending…',
   'edit.autoSavedAt': 'saved at {time}',
   'edit.autoSaveTooltip': 'Auto-save active (debounce: {ms} ms)',
+  'print.tooltip': 'Print or save as PDF (Ctrl+P)',
 
   // -- email view --
   'email.from': 'From',
@@ -239,6 +240,7 @@ const DE: Record<TranslationKey, string> = {
   'edit.autoSavePending': 'auto-save bereit…',
   'edit.autoSavedAt': 'gespeichert um {time}',
   'edit.autoSaveTooltip': 'Auto-Save aktiv (Pause: {ms} ms)',
+  'print.tooltip': 'Drucken oder als PDF speichern (Strg+P)',
 
   'email.from': 'Von',
   'email.to': 'An',
