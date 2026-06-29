@@ -363,6 +363,128 @@ pub fn rename_path(from: String, to_name: String) -> Result<String, CommandError
     Ok(dest.to_string_lossy().into_owned())
 }
 
+/// A single hit returned by [`search_brewhouse`]. `line_number` is 1-based;
+/// `context` is the matching line, truncated to 240 chars so a runaway minified
+/// line doesn't drag the IPC payload across the wire.
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchHit {
+    pub path: String,
+    pub line_number: usize,
+    pub context: String,
+}
+
+/// Hard caps to keep the search bounded even for huge workspaces.
+const SEARCH_MAX_TOTAL_HITS: usize = 500;
+const SEARCH_MAX_PER_FILE: usize = 50;
+const SEARCH_CONTEXT_CHARS: usize = 240;
+
+/// Full-text search across every readable file in the brewhouse — markdown,
+/// plain text, JSON, and HTTP request files. Substring match, optionally
+/// case-sensitive. Files past `MAX_FILE_SIZE`, ignored noise directories
+/// (`node_modules`, `.git`, …), and non-text kinds (images, PDFs, emails) are
+/// skipped. Results are capped at 500 total hits / 50 per file.
+#[tauri::command]
+pub fn search_brewhouse(
+    brewhouse: String,
+    query: String,
+    case_sensitive: bool,
+) -> Result<Vec<SearchHit>, CommandError> {
+    let root = PathBuf::from(&brewhouse);
+    if !root.is_dir() {
+        return Err(CommandError::NotADirectory(brewhouse));
+    }
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    let needle_owned: String;
+    let needle: &str = if case_sensitive {
+        &query
+    } else {
+        needle_owned = query.to_lowercase();
+        &needle_owned
+    };
+    let mut hits = Vec::new();
+    walk_and_search(&root, 0, needle, case_sensitive, &mut hits);
+    Ok(hits)
+}
+
+fn walk_and_search(
+    dir: &Path,
+    depth: usize,
+    needle: &str,
+    case_sensitive: bool,
+    hits: &mut Vec<SearchHit>,
+) {
+    if depth > MAX_DEPTH || hits.len() >= SEARCH_MAX_TOTAL_HITS {
+        return;
+    }
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        if hits.len() >= SEARCH_MAX_TOTAL_HITS {
+            return;
+        }
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with('.') && name != "." && name != ".." {
+            continue;
+        }
+        let ft = match entry.file_type() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        if ft.is_dir() {
+            if is_ignored_dir(&name) {
+                continue;
+            }
+            walk_and_search(&path, depth + 1, needle, case_sensitive, hits);
+        } else if ft.is_file() && is_text_readable(&path) {
+            search_in_file(&path, needle, case_sensitive, hits);
+        }
+    }
+}
+
+fn search_in_file(
+    path: &Path,
+    needle: &str,
+    case_sensitive: bool,
+    hits: &mut Vec<SearchHit>,
+) {
+    let meta = match fs::metadata(path) {
+        Ok(m) => m,
+        Err(_) => return,
+    };
+    if meta.len() > MAX_FILE_SIZE {
+        return;
+    }
+    let content = match fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(_) => return, // binary or non-UTF-8 — skip silently
+    };
+    let mut per_file = 0;
+    for (idx, line) in content.lines().enumerate() {
+        if hits.len() >= SEARCH_MAX_TOTAL_HITS || per_file >= SEARCH_MAX_PER_FILE {
+            break;
+        }
+        let matched = if case_sensitive {
+            line.contains(needle)
+        } else {
+            line.to_lowercase().contains(needle)
+        };
+        if matched {
+            hits.push(SearchHit {
+                path: path.to_string_lossy().into_owned(),
+                line_number: idx + 1,
+                context: line.chars().take(SEARCH_CONTEXT_CHARS).collect(),
+            });
+            per_file += 1;
+        }
+    }
+}
+
 #[tauri::command]
 pub fn delete_path(path: String) -> Result<(), CommandError> {
     let p = PathBuf::from(&path);

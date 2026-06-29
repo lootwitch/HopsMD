@@ -138,6 +138,31 @@ export async function saveImageAssetBridge(
   });
 }
 
+export interface SearchHit {
+  path: string;
+  lineNumber: number;
+  context: string;
+}
+
+/**
+ * Full-text substring search across every readable text file in the open
+ * brewhouse. Capped at 500 total hits / 50 per file by the Rust side.
+ */
+export async function searchBrewhouseBridge(
+  brewhouse: string,
+  query: string,
+  caseSensitive: boolean,
+): Promise<SearchHit[]> {
+  if (!isTauri()) {
+    throw new Error('Find in Files ist nur im Tauri-Shell verfügbar.');
+  }
+  return invokeBridge<SearchHit[]>('search_brewhouse', {
+    brewhouse,
+    query,
+    caseSensitive,
+  });
+}
+
 export async function readEmailBridge(
   path: string,
 ): Promise<import('../models/email-content.model').EmailContent> {

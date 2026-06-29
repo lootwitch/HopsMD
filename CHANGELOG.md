@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Outline-Sync** — the TOC now highlights the heading whose section is
   currently in view. As the article scrolls, the matching TOC item gets the
   pilsner-amber accent so you always see "where you are" at a glance.
+- **Find in Files** — **Ctrl+Shift+F** opens a brewhouse-wide full-text
+  search overlay. Substring match (case-sensitive optional), results grouped
+  per file with line numbers + context, click a hit to jump to that file.
+  Bounded at 500 total hits / 50 per file. Backed by the new Rust command
+  `search_brewhouse`, which walks the same files the tree shows and skips
+  the usual noise dirs (`node_modules`, `.git`, …).
 
 ## [1.3.0] - 2026-06-16
 

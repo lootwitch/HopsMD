@@ -4,6 +4,7 @@ import { BreweryToolbarComponent } from '../brewery-toolbar/brewery-toolbar.comp
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { FavoritesPanelComponent } from '../favorites-panel/favorites-panel.component';
 import { FileTreeComponent } from '../file-tree/file-tree.component';
+import { FindInFilesComponent } from '../find-in-files/find-in-files.component';
 import { MarkdownViewComponent } from '../markdown-view/markdown-view.component';
 import { MermaidFullscreenComponent } from '../mermaid-fullscreen/mermaid-fullscreen.component';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
@@ -38,6 +39,7 @@ const loadSidebarWidth = (): number => {
     ContextMenuComponent,
     FavoritesPanelComponent,
     FileTreeComponent,
+    FindInFilesComponent,
     MarkdownViewComponent,
     MermaidFullscreenComponent,
   ],
@@ -83,6 +85,7 @@ const loadSidebarWidth = (): number => {
 
     <hops-context-menu />
     <hops-mermaid-fullscreen />
+    <hops-find-in-files />
   `,
   styles: [
     `

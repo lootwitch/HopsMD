@@ -153,6 +153,15 @@ const EN = {
   'mermaid.couldntDecode': 'Could not decode diagram source: {detail}',
   'mermaid.errorPrefix': 'Cloudiness in diagram:',
   'mermaid.sourceSeparator': '--- source ---',
+
+  // -- find in files --
+  'find.placeholder': 'Find in all files…',
+  'find.caseSensitive': 'Case sensitive',
+  'find.searching': 'Searching…',
+  'find.startHint': 'Type at least 2 characters to search.',
+  'find.noResults': 'No matches.',
+  'find.noBrewhouse': 'Open a brewhouse before searching.',
+  'find.summary': '{hits} hits in {files} files',
 } as const;
 
 /** All known translation keys. */
@@ -287,6 +296,14 @@ const DE: Record<TranslationKey, string> = {
   'mermaid.couldntDecode': 'Konnte Diagramm-Quelltext nicht dekodieren: {detail}',
   'mermaid.errorPrefix': 'Trübung im Diagramm:',
   'mermaid.sourceSeparator': '--- Quelle ---',
+
+  'find.placeholder': 'In allen Dateien suchen…',
+  'find.caseSensitive': 'Groß-/Kleinschreibung beachten',
+  'find.searching': 'Suche läuft…',
+  'find.startHint': 'Mindestens 2 Zeichen eingeben, um zu suchen.',
+  'find.noResults': 'Keine Treffer.',
+  'find.noBrewhouse': 'Bitte erst ein Sudhaus öffnen.',
+  'find.summary': '{hits} Treffer in {files} Dateien',
 };
 
 export type Locale = 'de' | 'en';

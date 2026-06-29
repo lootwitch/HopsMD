@@ -32,6 +32,7 @@ pub fn run() {
             commands::recipe_book::delete_path,
             commands::recipe_book::move_path,
             commands::recipe_book::save_image_asset,
+            commands::recipe_book::search_brewhouse,
             commands::email::read_email,
             commands::watcher::watch_brewhouse,
             commands::watcher::set_open_recipe,
