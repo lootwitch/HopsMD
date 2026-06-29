@@ -52,6 +52,14 @@ hops-root {
   height: 100%;
 }
 
+/* Set by ViewerShellComponent during a sidebar resize drag so the col-resize
+   cursor and selection-suppression apply globally, not just over the handle. */
+body.hops-resizing-sidebar,
+body.hops-resizing-sidebar * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

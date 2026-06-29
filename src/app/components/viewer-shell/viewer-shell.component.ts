@@ -10,6 +10,25 @@ import { MarkdownStructureService } from '../../services/markdown-structure.serv
 import { I18nService } from '../../services/i18n.service';
 import { appVersionBridge, isTauri } from '../../core/tauri-bridge';
 
+const SIDEBAR_WIDTH_KEY = 'hopsmd.sidebarWidth';
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 600;
+const SIDEBAR_DEFAULT_WIDTH = 280;
+
+const clampSidebarWidth = (w: number): number =>
+  Math.min(Math.max(w, SIDEBAR_MIN_WIDTH), SIDEBAR_MAX_WIDTH);
+
+const loadSidebarWidth = (): number => {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    if (raw === null) return SIDEBAR_DEFAULT_WIDTH;
+    const n = Number(raw);
+    return Number.isFinite(n) ? clampSidebarWidth(n) : SIDEBAR_DEFAULT_WIDTH;
+  } catch {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+};
+
 @Component({
   selector: 'hops-viewer-shell',
   standalone: true,
@@ -25,7 +44,7 @@ import { appVersionBridge, isTauri } from '../../core/tauri-bridge';
   template: `
     <hops-brewery-toolbar />
 
-    <main class="layout">
+    <main class="layout" [style.--sidebar-w.px]="sidebarWidth()">
       <aside class="sidebar" aria-label="Sudhause und Rezeptbuch">
         <hops-favorites-panel />
 
@@ -45,6 +64,16 @@ import { appVersionBridge, isTauri } from '../../core/tauri-bridge';
         </div>
 
         <div class="sidebar-version" title="HopsMD">v{{ version() }}</div>
+
+        <div
+          class="resize-handle"
+          [class.dragging]="resizing()"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Sidebar verbreitern"
+          (pointerdown)="onResizeStart($event)"
+          (dblclick)="resetSidebarWidth()"
+        ></div>
       </aside>
 
       <section class="content">
@@ -65,16 +94,33 @@ import { appVersionBridge, isTauri } from '../../core/tauri-bridge';
       }
       .layout {
         display: grid;
-        grid-template-columns: minmax(220px, 320px) 1fr;
+        grid-template-columns: var(--sidebar-w, 280px) 1fr;
         flex: 1;
         min-height: 0;
       }
       .sidebar {
+        position: relative;
         display: flex;
         flex-direction: column;
         min-height: 0;
         background: var(--hops-stout-2);
         border-right: 1px solid var(--hops-border);
+      }
+      .resize-handle {
+        position: absolute;
+        top: 0;
+        right: -3px;
+        width: 6px;
+        height: 100%;
+        cursor: col-resize;
+        z-index: 10;
+        background: transparent;
+        transition: background 0.15s ease;
+        touch-action: none;
+      }
+      .resize-handle:hover,
+      .resize-handle.dragging {
+        background: var(--hops-amber, rgba(255, 170, 60, 0.45));
       }
       .sidebar-header {
         display: flex;
@@ -126,6 +172,52 @@ export class ViewerShellComponent {
 
   /** App version shown small at the bottom of the sidebar. */
   protected readonly version = signal<string>('');
+
+  /** Current sidebar width in px — bound to a CSS custom property. */
+  protected readonly sidebarWidth = signal<number>(loadSidebarWidth());
+  protected readonly resizing = signal<boolean>(false);
+
+  protected onResizeStart(event: PointerEvent): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    const aside = handle.parentElement;
+    if (!aside) return;
+    const startLeft = aside.getBoundingClientRect().left;
+
+    handle.setPointerCapture?.(event.pointerId);
+    document.body.classList.add('hops-resizing-sidebar');
+    this.resizing.set(true);
+
+    const onMove = (e: PointerEvent): void => {
+      this.sidebarWidth.set(clampSidebarWidth(e.clientX - startLeft));
+    };
+    const onUp = (): void => {
+      this.resizing.set(false);
+      document.body.classList.remove('hops-resizing-sidebar');
+      handle.releasePointerCapture?.(event.pointerId);
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+      try {
+        localStorage.setItem(SIDEBAR_WIDTH_KEY, String(this.sidebarWidth()));
+      } catch {
+        // Storage unavailable — width still applies for the session.
+      }
+    };
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+  }
+
+  protected resetSidebarWidth(): void {
+    this.sidebarWidth.set(SIDEBAR_DEFAULT_WIDTH);
+    try {
+      localStorage.removeItem(SIDEBAR_WIDTH_KEY);
+    } catch {
+      // ignore
+    }
+  }
 
   constructor() {
     void appVersionBridge()
