@@ -21,10 +21,18 @@ export class AppComponent {
     // are blocked elsewhere so e.g. CodeMirror doesn't paste the path text.
     const inTree = (e: DragEvent): boolean =>
       e.target instanceof Element && !!e.target.closest('hops-file-tree');
+    const inEditor = (e: DragEvent): boolean =>
+      e.target instanceof Element && !!e.target.closest('.cm-editor');
     const onDragOver = (e: DragEvent): void => {
       if (this.treeDrag.dragged() !== null) {
         // Outside the tree: stop CodeMirror & co. from accepting the drag.
         if (!inTree(e)) e.stopPropagation();
+        return;
+      }
+      // Inside the CodeMirror editor: let it bubble so the editor's own
+      // domEventHandlers can decide whether to accept the drag (image paste).
+      if (inEditor(e)) {
+        e.preventDefault(); // still block the native file:// navigation
         return;
       }
       e.preventDefault();
@@ -33,6 +41,13 @@ export class AppComponent {
     };
     const onDrop = (e: DragEvent): void => {
       if (this.treeDrag.dragged() !== null && inTree(e)) return; // rows handle it
+      // Editor handles image drops itself. Always preventDefault so the
+      // webview can never navigate to a dropped file:// URL, but let the
+      // event reach the editor's handler.
+      if (inEditor(e)) {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
     };

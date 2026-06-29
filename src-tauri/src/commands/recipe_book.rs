@@ -232,6 +232,77 @@ fn is_safe_name(name: &str) -> bool {
         && !name.contains('\\')
 }
 
+/// Persist a binary asset (typically a pasted/dropped image) into an
+/// `assets/` folder next to the file being edited. Creates the `assets/`
+/// folder on first use. If `suggested_name` collides with an existing file,
+/// the name is suffixed with `-2`, `-3`, … until a free slot is found.
+/// Returns the absolute path of the written file so the caller can build a
+/// relative markdown link from it.
+#[tauri::command]
+pub fn save_image_asset(
+    base_dir: String,
+    suggested_name: String,
+    data: Vec<u8>,
+) -> Result<String, CommandError> {
+    let dir = PathBuf::from(&base_dir);
+    if !dir.is_dir() {
+        return Err(CommandError::NotADirectory(base_dir));
+    }
+    if !is_safe_name(&suggested_name) {
+        return Err(CommandError::NotAFile(suggested_name));
+    }
+    if data.len() as u64 > MAX_FILE_SIZE {
+        return Err(CommandError::TooLarge {
+            size: data.len() as u64,
+        });
+    }
+    let assets = dir.join("assets");
+    if !assets.exists() {
+        fs::create_dir(&assets)?;
+    } else if !assets.is_dir() {
+        return Err(CommandError::NotADirectory(
+            assets.to_string_lossy().into_owned(),
+        ));
+    }
+    let target = unique_filename(&assets, &suggested_name);
+    fs::write(&target, &data)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+/// Append `-2`, `-3`, … to the stem until the resulting path is free.
+/// Preserves the original extension.
+fn unique_filename(dir: &Path, name: &str) -> PathBuf {
+    let candidate = dir.join(name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let p = Path::new(name);
+    let stem = p
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let ext = p
+        .extension()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let mut n: u32 = 2;
+    loop {
+        let candidate_name = if ext.is_empty() {
+            format!("{stem}-{n}")
+        } else {
+            format!("{stem}-{n}.{ext}")
+        };
+        let candidate = dir.join(&candidate_name);
+        if !candidate.exists() {
+            return candidate;
+        }
+        n = n.saturating_add(1);
+        if n == u32::MAX {
+            return candidate; // give up — let fs::write surface the conflict
+        }
+    }
+}
+
 #[tauri::command]
 pub fn create_recipe(dir: String, name: String) -> Result<String, CommandError> {
     if !is_safe_name(&name) {

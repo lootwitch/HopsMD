@@ -118,6 +118,26 @@ export async function movePathBridge(from: string, toDir: string): Promise<strin
   return invokeBridge<string>('move_path', { from, toDir });
 }
 
+/**
+ * Save binary bytes (a pasted/dropped image, typically) into an `assets/`
+ * subfolder of `baseDir`. Returns the absolute path of the written file.
+ * Filename collisions are resolved by appending `-2`, `-3`, … to the stem.
+ */
+export async function saveImageAssetBridge(
+  baseDir: string,
+  suggestedName: string,
+  data: Uint8Array,
+): Promise<string> {
+  if (!isTauri()) {
+    throw new Error('Asset-Speichern ist nur im Tauri-Shell verfügbar.');
+  }
+  return invokeBridge<string>('save_image_asset', {
+    baseDir,
+    suggestedName,
+    data: Array.from(data),
+  });
+}
+
 export async function readEmailBridge(
   path: string,
 ): Promise<import('../models/email-content.model').EmailContent> {

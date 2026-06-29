@@ -9,6 +9,28 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { saveImageAssetBridge, isTauri } from '../../core/tauri-bridge';
+import { dirname, basename } from '../../core/path-utils';
+
+/** Extension picked when the clipboard image has no useful filename. */
+const PASTE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+  'image/bmp': 'bmp',
+  'image/avif': 'avif',
+};
+
+const sanitiseFilename = (raw: string): string => {
+  const cleaned = raw
+    .replace(/[\\/]+/g, '_')
+    .replace(/[^\p{L}\p{N}._-]+/gu, '_')
+    .replace(/^_+|_+$/g, '');
+  return cleaned || 'pasted-image';
+};
 
 @Component({
   selector: 'hops-markdown-editor',
@@ -29,8 +51,14 @@ export class MarkdownEditorComponent {
   /** Syntax mode; read once at editor creation (the component is recreated
    *  per edit session, so a live binding is unnecessary). */
   readonly language = input<'markdown' | 'json' | 'http'>('markdown');
+  /** Absolute path of the file being edited — required for pasted-image
+   *  asset placement (images land in `assets/` next to this file). */
+  readonly currentPath = input<string | null>(null);
   /** Emitted on every document change. */
   readonly contentChange = output<string>();
+  /** Bubbled to the host so an error banner can show — image paste/drop fails
+   *  silently in browser-only mode, but surface real Tauri errors. */
+  readonly assetError = output<string>();
 
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
   private view: import('@codemirror/view').EditorView | null = null;
@@ -132,6 +160,87 @@ export class MarkdownEditorComponent {
           ]
         : [];
 
+      const insertImageMarkdown = (
+        view: import('@codemirror/view').EditorView,
+        filename: string,
+      ): void => {
+        const alt = filename.replace(/\.[^.]+$/, '');
+        const insert = `![${alt}](assets/${filename})`;
+        const { state } = view;
+        const r = state.selection.main;
+        view.dispatch(
+          state.update({
+            changes: { from: r.from, to: r.to, insert },
+            selection: { anchor: r.from + insert.length },
+            scrollIntoView: true,
+            userEvent: 'input.image',
+          }),
+        );
+      };
+
+      const handleImageBlob = async (
+        view: import('@codemirror/view').EditorView,
+        blob: File | Blob,
+      ): Promise<void> => {
+        const path = this.currentPath();
+        if (!path || !isTauri()) {
+          // In browser-only mode there's no Tauri bridge to write the file —
+          // silently no-op so the dev workflow still types nicely.
+          return;
+        }
+        const baseDir = dirname(path);
+        const blobName = blob instanceof File ? blob.name : '';
+        const ext =
+          (blobName && blobName.includes('.')
+            ? blobName.split('.').pop()!.toLowerCase()
+            : PASTE_EXT_BY_MIME[blob.type] ?? 'png');
+        const stem =
+          blobName && blobName.includes('.')
+            ? blobName.replace(/\.[^.]+$/, '')
+            : `pasted-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}`;
+        const filename = sanitiseFilename(`${stem}.${ext}`);
+        try {
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          const savedAbs = await saveImageAssetBridge(baseDir, filename, buf);
+          insertImageMarkdown(view, basename(savedAbs));
+        } catch (err) {
+          this.assetError.emit(
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      };
+
+      const editorDomEvents = isMarkdown
+        ? EditorView.domEventHandlers({
+            paste: (event, view) => {
+              const items = event.clipboardData?.items;
+              if (!items) return false;
+              for (const item of Array.from(items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                  const blob = item.getAsFile();
+                  if (blob) {
+                    event.preventDefault();
+                    void handleImageBlob(view, blob);
+                    return true;
+                  }
+                }
+              }
+              return false;
+            },
+            drop: (event, view) => {
+              const files = event.dataTransfer?.files;
+              if (!files || files.length === 0) return false;
+              const images = Array.from(files).filter((f) =>
+                f.type.startsWith('image/'),
+              );
+              if (images.length === 0) return false;
+              event.preventDefault();
+              for (const img of images) void handleImageBlob(view, img);
+              return true;
+            },
+          })
+        : [];
+
       const theme = EditorView.theme(
         {
           '&': { color: 'var(--hops-text)', backgroundColor: 'var(--hops-stout)', height: '100%' },
@@ -230,6 +339,7 @@ export class MarkdownEditorComponent {
           search({ top: true }),
           highlightSelectionMatches(),
           keymap.of([...markdownShortcuts, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+          editorDomEvents,
           langExtension,
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           EditorView.lineWrapping,

@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inserts `[selection](url)` with `url` pre-selected for replacement.
   Pressing Enter inside a `- ` / `1. ` list continues the list automatically
   (via the `@codemirror/lang-markdown` default keymap).
+- **Bild per Paste/Drop einfügen** — pasting an image from the clipboard or
+  dropping image files onto the editor saves them to an `assets/` folder next
+  to the current document (created on first use) and inserts a relative
+  `![alt](assets/file.png)` link at the caret. Filename collisions get a
+  `-2`, `-3`, … suffix; non-image drops are still blocked from navigating the
+  webview. New Rust command `save_image_asset` does the atomic write.
 
 ## [1.3.0] - 2026-06-16
 

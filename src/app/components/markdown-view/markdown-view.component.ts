@@ -131,7 +131,9 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
           class="editor-pane"
           [content]="state.editBuffer()"
           [language]="editorLanguage()"
+          [currentPath]="state.selectedPath()"
           (contentChange)="state.updateBuffer($event)"
+          (assetError)="state.showError($event)"
         />
       </div>
     } @else {
