@@ -162,6 +162,16 @@ const EN = {
   'find.noResults': 'No matches.',
   'find.noBrewhouse': 'Open a brewhouse before searching.',
   'find.summary': '{hits} hits in {files} files',
+
+  // -- frontmatter editor --
+  'frontmatter.title': 'Metadata',
+  'frontmatter.keyPlaceholder': 'key',
+  'frontmatter.valuePlaceholder': 'value',
+  'frontmatter.addField': 'Add field',
+  'frontmatter.removeField': 'Remove this field',
+  'frontmatter.save': 'Save metadata',
+  'frontmatter.revert': 'Revert',
+  'frontmatter.dirty': 'Unsaved metadata changes',
 } as const;
 
 /** All known translation keys. */
@@ -304,6 +314,15 @@ const DE: Record<TranslationKey, string> = {
   'find.noResults': 'Keine Treffer.',
   'find.noBrewhouse': 'Bitte erst ein Sudhaus öffnen.',
   'find.summary': '{hits} Treffer in {files} Dateien',
+
+  'frontmatter.title': 'Metadaten',
+  'frontmatter.keyPlaceholder': 'Schlüssel',
+  'frontmatter.valuePlaceholder': 'Wert',
+  'frontmatter.addField': 'Feld hinzufügen',
+  'frontmatter.removeField': 'Feld entfernen',
+  'frontmatter.save': 'Metadaten speichern',
+  'frontmatter.revert': 'Verwerfen',
+  'frontmatter.dirty': 'Ungespeicherte Metadaten-Änderungen',
 };
 
 export type Locale = 'de' | 'en';

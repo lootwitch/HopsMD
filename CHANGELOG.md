@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Bounded at 500 total hits / 50 per file. Backed by the new Rust command
   `search_brewhouse`, which walks the same files the tree shows and skips
   the usual noise dirs (`node_modules`, `.git`, …).
+- **Frontmatter-Editor** — when the open file has a YAML frontmatter block,
+  a collapsible "Metadaten" panel appears above the rendered article with
+  each key/value as an editable text field. "+ Feld hinzufügen" appends a
+  new row; the × button removes one. Save writes the recomposed frontmatter
+  back into the file without entering full edit mode. Scope is intentionally
+  flat: nested mappings / lists / block scalars pass through the raw source
+  and aren't surfaced as form fields.
 
 ## [1.3.0] - 2026-06-16
 

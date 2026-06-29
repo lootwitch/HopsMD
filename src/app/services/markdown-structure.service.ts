@@ -24,6 +24,23 @@ const EVENT_BREWHOUSE_CHANGED = 'brewhouse:changed';
 const LAST_BREWHOUSE_KEY = 'hopsmd:lastBrewhouse';
 
 /**
+ * Replace the YAML frontmatter block of `source` (`---\n…\n---\n`) with
+ * `newFrontmatter`. If the source has no leading frontmatter, the new block
+ * is prepended. Passing an empty string strips the existing frontmatter.
+ */
+export function replaceFrontmatter(
+  source: string,
+  newFrontmatter: string,
+): string {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(source);
+  const body = match ? source.slice(match[0].length) : source;
+  if (newFrontmatter.trim().length === 0) {
+    return body.replace(/^\s+/, '');
+  }
+  return `---\n${newFrontmatter}\n---\n\n${body.replace(/^\s+/, '')}`;
+}
+
+/**
  * Find the Nth GFM task-list checkbox in `source` and toggle it.
  * Matches the same lines marked treats as task items: a `- ` / `* ` / `+ `
  * bullet (with optional leading indent) followed by `[ ]`, `[x]`, or `[X]`.
@@ -222,6 +239,30 @@ export class MarkdownStructureService {
   /** Dismiss the conflict banner, keeping the user's edits. */
   keepMyEdits(): void {
     this._externalConflict.set(false);
+  }
+
+  /**
+   * Write fresh content to the currently selected markdown file *without*
+   * entering edit mode. Used by the frontmatter editor and the task-list
+   * checkbox toggle — both apply a localized rewrite that the user expects
+   * to land immediately. No-ops if no markdown file is open.
+   */
+  async saveContent(updated: string): Promise<void> {
+    const path = this._selectedPath();
+    if (!path) return;
+    if (this._selectedKind() !== 'markdown') return;
+    if (updated === this._selectedContent()) return;
+    this._loading.set(true);
+    this._error.set(null);
+    try {
+      await saveRecipeBridge(path, updated);
+      this._selectedContent.set(updated);
+      this._lastModified.set(Date.now());
+    } catch (err) {
+      this._error.set(this.describe(err));
+    } finally {
+      this._loading.set(false);
+    }
   }
 
   /**

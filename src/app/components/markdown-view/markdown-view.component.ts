@@ -20,6 +20,7 @@ import { MarkdownParserService } from '../../services/markdown-parser.service';
 import { MarkdownStructureService } from '../../services/markdown-structure.service';
 import { MermaidFullscreenService } from '../../services/mermaid-fullscreen.service';
 import { MermaidRenderService } from '../../services/mermaid-render.service';
+import { FrontmatterEditorComponent } from '../frontmatter-editor/frontmatter-editor.component';
 import { MarkdownEditorComponent } from '../markdown-editor/markdown-editor.component';
 import { TocComponent } from '../toc/toc.component';
 import { EmailViewComponent } from '../email-view/email-view.component';
@@ -53,6 +54,7 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
   standalone: true,
   imports: [
     TocComponent,
+    FrontmatterEditorComponent,
     MarkdownEditorComponent,
     EmailViewComponent,
     ImageViewComponent,
@@ -170,12 +172,15 @@ const TOC_COLLAPSE_KEY = 'hopsmd:tocCollapsed';
         }
         @default {
           <div class="view-grid" [hidden]="!html()">
-            <article
-              #host
-              class="hops-markdown"
-              [innerHTML]="html()"
-              (click)="onContentClick($event)"
-            ></article>
+            <div>
+              <hops-frontmatter-editor [content]="state.selectedContent()" />
+              <article
+                #host
+                class="hops-markdown"
+                [innerHTML]="html()"
+                (click)="onContentClick($event)"
+              ></article>
+            </div>
             @if (toc().length > 0) {
               <aside class="toc-pane">
                 <hops-toc
