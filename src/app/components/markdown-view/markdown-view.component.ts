@@ -592,6 +592,19 @@ export class MarkdownViewComponent {
   protected onContentClick(event: Event): void {
     const target = event.target as HTMLElement | null;
 
+    // GFM task-list checkbox — toggle the corresponding source line and
+    // persist it. Indices come from the data-task-index the parser stamps
+    // onto each <input type="checkbox">.
+    const checkbox = target?.closest<HTMLInputElement>(
+      'input.hops-task-checkbox[data-task-index]',
+    );
+    if (checkbox) {
+      event.preventDefault();
+      const idx = Number(checkbox.dataset['taskIndex']);
+      if (Number.isFinite(idx)) void this.state.toggleTask(idx);
+      return;
+    }
+
     // Anchor inside the rendered markdown — cross-file link, in-page anchor,
     // or external URL. Always preventDefault: the browser's native navigation
     // would try to load the href inside the Tauri webview, which is wrong

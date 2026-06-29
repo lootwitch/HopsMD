@@ -24,6 +24,25 @@ const EVENT_BREWHOUSE_CHANGED = 'brewhouse:changed';
 const LAST_BREWHOUSE_KEY = 'hopsmd:lastBrewhouse';
 
 /**
+ * Find the Nth GFM task-list checkbox in `source` and toggle it.
+ * Matches the same lines marked treats as task items: a `- ` / `* ` / `+ `
+ * bullet (with optional leading indent) followed by `[ ]`, `[x]`, or `[X]`.
+ * Returns the updated source, or `null` if the index is out of range.
+ */
+function toggleNthTaskLine(source: string, index: number): string | null {
+  const re = /^([ \t]*(?:[-*+]|\d+\.)\s+)\[( |x|X)\]/gm;
+  let n = 0;
+  let hit = false;
+  const updated = source.replace(re, (match, prefix: string, mark: string) => {
+    if (n++ !== index) return match;
+    hit = true;
+    const next = mark === ' ' ? 'x' : ' ';
+    return `${prefix}[${next}]`;
+  });
+  return hit ? updated : null;
+}
+
+/**
  * Owns the tree-shaped state of the currently opened workspace
  * (the "Sudhaus"), the currently selected file, and the raw markdown
  * fetched from disk. Pure signals — no RxJS exposed to the UI.
@@ -203,6 +222,42 @@ export class MarkdownStructureService {
   /** Dismiss the conflict banner, keeping the user's edits. */
   keepMyEdits(): void {
     this._externalConflict.set(false);
+  }
+
+  /**
+   * Toggle the Nth GFM task-list checkbox in the currently selected markdown
+   * file and persist the result. Indices count `- [ ]` / `- [x]` lines in
+   * document order, matching the `data-task-index` the parser stamps on each
+   * rendered checkbox. No-ops if no file is open or the file isn't markdown.
+   *
+   * In edit mode the change goes into the buffer (so the user sees it in the
+   * editor and saves explicitly); in view mode it's written straight to disk.
+   */
+  async toggleTask(index: number): Promise<void> {
+    const path = this._selectedPath();
+    if (!path) return;
+    if (this._selectedKind() !== 'markdown') return;
+    const source =
+      this._mode() === 'editing' ? this._editBuffer() : this._selectedContent();
+    const updated = toggleNthTaskLine(source, index);
+    if (updated === null) return; // index out of range or no checkbox there
+
+    if (this._mode() === 'editing') {
+      this._editBuffer.set(updated);
+      return;
+    }
+
+    this._loading.set(true);
+    this._error.set(null);
+    try {
+      await saveRecipeBridge(path, updated);
+      this._selectedContent.set(updated);
+      this._lastModified.set(Date.now());
+    } catch (err) {
+      this._error.set(this.describe(err));
+    } finally {
+      this._loading.set(false);
+    }
   }
 
   /**

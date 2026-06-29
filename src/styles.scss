@@ -331,6 +331,14 @@ body.hops-resizing-sidebar * {
     margin: 0 0.5em 0 0;
     accent-color: var(--hops-pilsner);
     transform: translateY(1px);
+    cursor: pointer;
+  }
+  /* Interactive task checkboxes — overrule the default focus ring with a
+     subtle brewpub-amber halo so it's visible against the dark page. */
+  li.task-list-item input.hops-task-checkbox:focus-visible {
+    outline: 2px solid rgba(245, 197, 66, 0.55);
+    outline-offset: 2px;
+    border-radius: 2px;
   }
   ul:has(> li.task-list-item) { padding-left: 1.2em; }
 

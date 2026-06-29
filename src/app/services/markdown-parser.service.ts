@@ -15,6 +15,28 @@ import { I18nService } from './i18n.service';
 /** Outer wrapper around every fenced code block (mermaid + plain text). */
 export const CODE_BLOCK_CLASS = 'hops-code-block';
 
+/**
+ * Rewrite GFM task-list checkboxes so they are interactive: drop the
+ * `disabled` attribute marked emits, and number each one with a
+ * `data-task-index` so the click handler can map a click back to the Nth
+ * `- [ ]` / `- [x]` line in the source.
+ */
+function enableTaskListCheckboxes(html: string): string {
+  let i = 0;
+  return html.replace(
+    /<input([^>]*?)type="checkbox"([^>]*?)>/gi,
+    (_match, before: string, after: string) => {
+      const stripDisabled = (s: string): string =>
+        s.replace(/\sdisabled(?:="[^"]*")?/i, '');
+      const idx = i++;
+      return (
+        `<input${stripDisabled(before)}type="checkbox"${stripDisabled(after)}` +
+        ` data-task-index="${idx}" class="hops-task-checkbox">`
+      );
+    },
+  );
+}
+
 /** Inner host the MermaidRenderService writes the SVG into. */
 export const CODE_BLOCK_RENDERED_CLASS = 'hops-code-rendered';
 
@@ -135,7 +157,8 @@ export class MarkdownParserService {
     const rawHtml = await this.marked.parse(body, { async: true });
     const withFm = frontmatter !== null ? this.frontmatterHtml(frontmatter) + rawHtml : rawHtml;
     const withAssets = baseDir ? await this.rewriteRelativeImages(withFm, baseDir) : withFm;
-    return DOMPurify.sanitize(withAssets, {
+    const withClickableTasks = enableTaskListCheckboxes(withAssets);
+    return DOMPurify.sanitize(withClickableTasks, {
       ADD_ATTR: ['target'],
       ALLOW_DATA_ATTR: true,
     });

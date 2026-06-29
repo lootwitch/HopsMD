@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `![alt](assets/file.png)` link at the caret. Filename collisions get a
   `-2`, `-3`, … suffix; non-image drops are still blocked from navigating the
   webview. New Rust command `save_image_asset` does the atomic write.
+- **Klickbare Task-Checkboxes** — GFM task-list checkboxes in the rendered
+  article are now interactive: clicking `- [ ]` flips it to `- [x]` (and back)
+  in the underlying file. In view mode the change is saved straight to disk;
+  in edit mode it updates the edit buffer.
 
 ## [1.3.0] - 2026-06-16
 
