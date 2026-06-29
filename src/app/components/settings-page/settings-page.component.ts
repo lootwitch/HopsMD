@@ -12,6 +12,7 @@ import {
   MIN_SCALE,
   STEP,
 } from '../../services/content-zoom.service';
+import { EditorPrefsService } from '../../services/editor-prefs.service';
 import { FontsService } from '../../services/fonts.service';
 import { I18nService, type Locale } from '../../services/i18n.service';
 import { ColorThemeService } from '../../services/color-theme.service';
@@ -103,6 +104,47 @@ import { ColorSettingsComponent } from './color-settings.component';
         </div>
       </section>
 
+      <h2 class="section-title">{{ i18n.t('settings.section.editor') }}</h2>
+
+      <section class="block">
+        <h3>{{ i18n.t('settings.editor.spellcheckHeading') }}</h3>
+        <label class="toggle-row">
+          <input
+            type="checkbox"
+            [checked]="prefs.spellcheck()"
+            (change)="onSpellcheck($event)"
+          />
+          <span>{{ i18n.t('settings.editor.spellcheckLabel') }}</span>
+        </label>
+        <p class="hint">{{ i18n.t('settings.editor.spellcheckHint') }}</p>
+      </section>
+
+      <section class="block">
+        <h3>{{ i18n.t('settings.editor.autoSaveHeading') }}</h3>
+        <label class="toggle-row">
+          <input
+            type="checkbox"
+            [checked]="prefs.autoSave()"
+            (change)="onAutoSave($event)"
+          />
+          <span>{{ i18n.t('settings.editor.autoSaveLabel') }}</span>
+        </label>
+        @if (prefs.autoSave()) {
+          <div class="slider-row">
+            <input
+              type="range"
+              [min]="prefs.minAutoSaveDelay"
+              [max]="prefs.maxAutoSaveDelay"
+              step="100"
+              [value]="prefs.autoSaveDelayMs()"
+              (input)="onAutoSaveDelay($event)"
+            />
+            <span class="slider-value">{{ autoSaveSeconds() }}s</span>
+          </div>
+        }
+        <p class="hint">{{ i18n.t('settings.editor.autoSaveHint') }}</p>
+      </section>
+
       <section class="block preview">
         <h3>{{ i18n.t('settings.preview.heading') }}</h3>
         <div class="preview-card">
@@ -185,6 +227,19 @@ import { ColorSettingsComponent } from './color-settings.component';
       }
       .preview-card pre code { background: transparent; padding: 0; color: var(--hops-text); }
       .auto-saved { font-size: 0.78rem; color: var(--hops-text-dim); font-style: italic; }
+      .toggle-row {
+        display: inline-flex; align-items: center; gap: 0.6rem;
+        cursor: pointer; user-select: none;
+        font-size: 0.88rem; color: var(--hops-text);
+      }
+      .toggle-row input[type='checkbox'] {
+        accent-color: var(--hops-pilsner);
+        width: 1rem; height: 1rem;
+      }
+      .hint {
+        margin: 0.4rem 0 0; font-size: 0.78rem;
+        color: var(--hops-text-dim); font-style: italic;
+      }
     `,
   ],
 })
@@ -192,11 +247,15 @@ export class SettingsPageComponent {
   protected readonly theme = inject(ColorThemeService);
   protected readonly fonts = inject(FontsService);
   protected readonly zoom = inject(ContentZoomService);
+  protected readonly prefs = inject(EditorPrefsService);
   protected readonly i18n = inject(I18nService);
   private readonly router = inject(Router);
 
   protected readonly minScale = MIN_SCALE;
   protected readonly maxScale = MAX_SCALE;
+  protected readonly autoSaveSeconds = computed(() =>
+    (this.prefs.autoSaveDelayMs() / 1000).toFixed(1),
+  );
   protected readonly step = STEP;
   protected readonly scalePercent = computed(() => Math.round(this.zoom.scale() * 100));
 
@@ -228,5 +287,17 @@ export class SettingsPageComponent {
 
   protected setLocale(locale: Locale): void {
     this.i18n.set(locale);
+  }
+
+  protected onSpellcheck(event: Event): void {
+    this.prefs.spellcheck.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected onAutoSave(event: Event): void {
+    this.prefs.autoSave.set((event.target as HTMLInputElement).checked);
+  }
+
+  protected onAutoSaveDelay(event: Event): void {
+    this.prefs.autoSaveDelayMs.set(Number((event.target as HTMLInputElement).value));
   }
 }

@@ -81,6 +81,15 @@ const EN = {
   'settings.title': 'Settings',
   'settings.close': 'Close',
   'settings.section.appearance': 'Appearance',
+  'settings.section.editor': 'Editor',
+  'settings.editor.spellcheckHeading': 'Spellcheck',
+  'settings.editor.spellcheckLabel': 'Underline misspelled words in the editor',
+  'settings.editor.spellcheckHint':
+    'Uses the browser\'s built-in spellchecker. Works for the language(s) the OS has installed.',
+  'settings.editor.autoSaveHeading': 'Auto-save',
+  'settings.editor.autoSaveLabel': 'Save edits automatically while typing',
+  'settings.editor.autoSaveHint':
+    'A debounced background save writes the buffer to disk after you pause typing.',
   'settings.theme.presets': 'Theme presets',
   'settings.preset.brewpubDark': 'Brewpub Dark',
   'settings.preset.pilsnerHell': 'Pilsner Light',
@@ -241,6 +250,15 @@ const DE: Record<TranslationKey, string> = {
   'settings.title': 'Einstellungen',
   'settings.close': 'Schließen',
   'settings.section.appearance': 'Darstellung',
+  'settings.section.editor': 'Editor',
+  'settings.editor.spellcheckHeading': 'Rechtschreibprüfung',
+  'settings.editor.spellcheckLabel': 'Tippfehler im Editor markieren',
+  'settings.editor.spellcheckHint':
+    'Nutzt die im Browser/Betriebssystem installierten Wörterbücher.',
+  'settings.editor.autoSaveHeading': 'Automatisches Speichern',
+  'settings.editor.autoSaveLabel': 'Änderungen beim Tippen automatisch speichern',
+  'settings.editor.autoSaveHint':
+    'Speichert den Puffer nach einer kurzen Tipppause automatisch auf die Festplatte.',
   'settings.theme.presets': 'Themen-Vorlagen',
   'settings.preset.brewpubDark': 'Brewpub Dunkel',
   'settings.preset.pilsnerHell': 'Pilsner Hell',

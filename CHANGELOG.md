@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back into the file without entering full edit mode. Scope is intentionally
   flat: nested mappings / lists / block scalars pass through the raw source
   and aren't surfaced as form fields.
+- **Editor-Rechtschreibprüfung** — optional spellcheck for the CodeMirror
+  edit pane. Off by default; toggle it under Settings → Editor. Uses the
+  browser/OS-installed dictionaries, so it picks up whatever languages the
+  user has configured.
 
 ## [1.3.0] - 2026-06-16
 

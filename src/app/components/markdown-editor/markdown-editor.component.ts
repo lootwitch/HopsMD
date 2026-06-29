@@ -4,6 +4,7 @@ import {
   DestroyRef,
   ElementRef,
   afterNextRender,
+  effect,
   inject,
   input,
   output,
@@ -11,6 +12,7 @@ import {
 } from '@angular/core';
 import { saveImageAssetBridge, isTauri } from '../../core/tauri-bridge';
 import { dirname, basename } from '../../core/path-utils';
+import { EditorPrefsService } from '../../services/editor-prefs.service';
 
 /** Extension picked when the clipboard image has no useful filename. */
 const PASTE_EXT_BY_MIME: Record<string, string> = {
@@ -62,6 +64,7 @@ export class MarkdownEditorComponent {
 
   private readonly host = viewChild.required<ElementRef<HTMLElement>>('host');
   private view: import('@codemirror/view').EditorView | null = null;
+  private readonly prefs = inject(EditorPrefsService);
 
   constructor() {
     // Set before the async callback can resume, so a teardown that races the
@@ -350,7 +353,20 @@ export class MarkdownEditorComponent {
 
       if (destroyed) return; // component torn down while imports were in flight
       this.view = new EditorView({ state, parent: this.host().nativeElement });
+      this.view.contentDOM.setAttribute(
+        'spellcheck',
+        this.prefs.spellcheck() ? 'true' : 'false',
+      );
       this.view.focus();
+    });
+
+    // Reactively flip the spellcheck attribute when the user toggles the
+    // setting — no need to rebuild the EditorState. The browser picks up
+    // attribute changes live on the next layout pass.
+    effect(() => {
+      const enabled = this.prefs.spellcheck();
+      if (!this.view) return;
+      this.view.contentDOM.setAttribute('spellcheck', enabled ? 'true' : 'false');
     });
   }
 }
