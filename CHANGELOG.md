@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-30
+
+Editor & viewer polish — sidebar resize, search, markdown shortcuts,
+inline image paste, interactive task lists, outline sync, brewhouse
+full-text search, frontmatter form, spellcheck, auto-save, print-to-PDF,
+and a per-code-block split editor.
+
 ### Added
 
 - **Resizable sidebar** — drag the right edge of the Rezeptbuch column to widen
@@ -224,7 +231,9 @@ fullscreen with pan + zoom, pinned Stammsudhaus, content zoom).
   `effect + queueMicrotask` to `afterRenderEffect` for reliable DOM
   timing.
 
-[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/lootwitch/HopsMD/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/lootwitch/HopsMD/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/lootwitch/HopsMD/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/lootwitch/HopsMD/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/lootwitch/HopsMD/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/lootwitch/HopsMD/releases/tag/v1.0.0

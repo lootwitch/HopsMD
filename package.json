@@ -1,6 +1,6 @@
 {
   "name": "hopsmd",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "HopsMD — local Markdown & Mermaid viewer brewed with Tauri + Angular. A CloudBrew side project.",
   "scripts": {
