@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Resizable sidebar** — drag the right edge of the Rezeptbuch column to widen
+  or narrow it. Width clamps to 180-600 px, persists across restarts, and a
+  double-click on the handle restores the 280 px default.
+- **In-editor Suchen & Ersetzen** — opens the CodeMirror search panel with
+  **Ctrl+F** (find) and **Ctrl+H** (replace). Supports case-insensitive,
+  regex, and whole-word matching, plus Replace / Replace All. The panel is
+  themed to match the brewpub palette (no more white-box on dark background).
+
 ## [1.3.0] - 2026-06-16
 
 ### Added
