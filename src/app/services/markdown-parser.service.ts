@@ -8,7 +8,7 @@ import { definitionListExtension } from '../core/markdown-extensions/definition-
 import { emojiExtension } from '../core/markdown-extensions/emoji.extension';
 import { wikiLinkExtension } from '../core/markdown-extensions/wikilink.extension';
 import { loadHljs } from '../core/highlight-loader';
-import { dirname, resolveRelative } from '../core/path-utils';
+import { dirname, resolveObsidianStyle, resolveRelative } from '../core/path-utils';
 import { toAssetUrl } from '../core/tauri-bridge';
 import { I18nService } from './i18n.service';
 
@@ -149,14 +149,23 @@ export class MarkdownParserService {
   /**
    * Parse `markdown` to sanitized HTML. When `filePath` is provided, relative
    * image references are resolved against the file's directory and rewritten
-   * to Tauri asset URLs the webview can fetch.
+   * to Tauri asset URLs the webview can fetch. `resolveOpts`, when given,
+   * lets an image reference that doesn't exist relative to the file fall
+   * back to a resolution relative to the vault root (Obsidian-style links) —
+   * see `resolveObsidianStyle`.
    */
-  async parse(markdown: string, filePath: string | null): Promise<string> {
+  async parse(
+    markdown: string,
+    filePath: string | null,
+    resolveOpts?: { vaultRoot: string | null; pathExists: (path: string) => boolean },
+  ): Promise<string> {
     const baseDir = filePath ? dirname(filePath) : null;
     const { frontmatter, body } = this.splitFrontmatter(markdown);
     const rawHtml = await this.marked.parse(body, { async: true });
     const withFm = frontmatter !== null ? this.frontmatterHtml(frontmatter) + rawHtml : rawHtml;
-    const withAssets = baseDir ? await this.rewriteRelativeImages(withFm, baseDir) : withFm;
+    const withAssets = baseDir
+      ? await this.rewriteRelativeImages(withFm, baseDir, resolveOpts ?? null)
+      : withFm;
     const withClickableTasks = enableTaskListCheckboxes(withAssets);
     return DOMPurify.sanitize(withClickableTasks, {
       ADD_ATTR: ['target'],
@@ -241,7 +250,11 @@ export class MarkdownParserService {
    * them with absolute Tauri asset URLs. Done after marked.parse so we don't
    * need a renderer hook with async resolution.
    */
-  private async rewriteRelativeImages(html: string, baseDir: string): Promise<string> {
+  private async rewriteRelativeImages(
+    html: string,
+    baseDir: string,
+    resolveOpts: { vaultRoot: string | null; pathExists: (path: string) => boolean } | null,
+  ): Promise<string> {
     const matches = Array.from(
       html.matchAll(/<img\b([^>]*?)\ssrc=("|')([^"']+)\2([^>]*)>/gi),
     );
@@ -255,7 +268,9 @@ export class MarkdownParserService {
           return { original, replacement: original };
         }
         try {
-          const resolved = resolveRelative(baseDir, src);
+          const resolved = resolveOpts
+            ? resolveObsidianStyle(baseDir, resolveOpts.vaultRoot, src, resolveOpts.pathExists)
+            : resolveRelative(baseDir, src);
           const assetUrl = await toAssetUrl(resolved);
           const safeUrl = escapeHtml(assetUrl);
           const replacement = original.replace(

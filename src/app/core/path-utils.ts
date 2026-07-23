@@ -48,3 +48,26 @@ export function resolveRelative(base: string, ref: string): string {
   const joined = baseParts.join('/');
   return drive ? `${drive}/${joined}` : `/${joined}`;
 }
+
+/**
+ * Resolve a relative reference the way real-world vaults actually write
+ * them: some links are relative to the current file (plain Markdown
+ * convention), others are relative to the vault root (Obsidian's default
+ * "shortest path" / "absolute path in vault" link styles both produce these
+ * once a file moves out of the root folder). We can't know which style a
+ * given link uses, so we try file-relative first — unchanged default
+ * behaviour — and only fall back to root-relative when that target doesn't
+ * actually exist and a root-relative resolution does.
+ */
+export function resolveObsidianStyle(
+  fileDir: string,
+  vaultRoot: string | null,
+  ref: string,
+  exists: (path: string) => boolean,
+): string {
+  const relativeToFile = resolveRelative(fileDir, ref);
+  if (!vaultRoot || exists(relativeToFile)) return relativeToFile;
+  const relativeToRoot = resolveRelative(vaultRoot, ref);
+  if (relativeToRoot !== relativeToFile && exists(relativeToRoot)) return relativeToRoot;
+  return relativeToFile;
+}

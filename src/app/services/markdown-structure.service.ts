@@ -121,6 +121,29 @@ export class MarkdownStructureService {
 
   readonly isOpen = computed(() => this._tree() !== null);
 
+  /**
+   * Normalized paths of every file known to the open workspace (from the
+   * scanned tree). Backs `pathExists` — the fallback used to disambiguate
+   * file-relative vs. vault-root-relative link resolution (Obsidian-style
+   * links). Recomputes only when the tree itself changes.
+   */
+  private readonly knownPaths = computed<ReadonlySet<string>>(() => {
+    const root = this._tree();
+    const set = new Set<string>();
+    if (!root) return set;
+    const walk = (n: RecipeNode): void => {
+      if (!n.isDir) set.add(normalize(n.path));
+      for (const child of n.children) walk(child);
+    };
+    walk(root);
+    return set;
+  });
+
+  /** Whether `path` is a known file in the open workspace. */
+  pathExists(path: string): boolean {
+    return this.knownPaths().has(normalize(path));
+  }
+
   constructor() {
     // Debounced auto-save loop. Reschedules whenever the edit buffer changes
     // (the `dirty` computed reacts to that) or the auto-save preferences

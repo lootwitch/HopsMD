@@ -12,7 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { dirname, resolveRelative } from '../../core/path-utils';
+import { dirname, resolveObsidianStyle } from '../../core/path-utils';
 import { listFencedBlocks, replaceNthFencedBlock } from '../../core/fence-utils';
 import { openPathBridge, openUrlBridge } from '../../core/tauri-bridge';
 import type { TocItem } from '../../models/toc-item.model';
@@ -578,9 +578,14 @@ export class MarkdownViewComponent {
         this.html.set(null);
         return;
       }
-      void this.parser.parse(content, path).then((rendered) => {
-        this.html.set(this.sanitizer.bypassSecurityTrustHtml(rendered));
-      });
+      void this.parser
+        .parse(content, path, {
+          vaultRoot: this.state.brewhouse(),
+          pathExists: (p) => this.state.pathExists(p),
+        })
+        .then((rendered) => {
+          this.html.set(this.sanitizer.bypassSecurityTrustHtml(rendered));
+        });
     });
 
     // After the HTML has been written into the DOM by [innerHTML], find any
@@ -849,7 +854,12 @@ export class MarkdownViewComponent {
       return;
     }
     const decodedPath = decodeURIComponent(pathPart);
-    const resolved = resolveRelative(dirname(currentPath), decodedPath);
+    const resolved = resolveObsidianStyle(
+      dirname(currentPath),
+      this.state.brewhouse(),
+      decodedPath,
+      (p) => this.state.pathExists(p),
+    );
 
     if (classify(decodedPath) !== 'unsupported') {
       if (anchor) this.pendingAnchor = decodeURIComponent(anchor);
