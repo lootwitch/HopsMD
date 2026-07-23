@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-23
+
+### Added
+
+- **Obsidian-style Link-Auflösung** — Markdown-/Wiki-Links (`[[Page]]`) und
+  Bildreferenzen lösen relative Pfade jetzt zweistufig auf: zuerst wie
+  bisher relativ zum Ordner der verlinkenden Datei, und — nur wenn dieses
+  Ziel nicht existiert — relativ zur Wurzel des geöffneten Sudhauses. Das
+  deckt den in Obsidian-Vaults üblichen root-relativen Linkstil ab, sobald
+  eine Notiz aus dem Wurzelordner verschoben wurde, ohne bestehende
+  relative Links zu verändern.
+
 ## [1.4.0] - 2026-06-30
 
 Editor & viewer polish — sidebar resize, search, markdown shortcuts,
